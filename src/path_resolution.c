@@ -139,7 +139,7 @@ int tagsistant_check_single_tagging(qtree_and_node *and, dbi_conn dbi, gchar *ob
 	tagsistant_query(
 		"select objects.inode from objects "
 			"join tagging on objects.inode = tagging.inode "
-			"where objects.objectname = '%s' and tagging.tag_id = %d",
+			"where objects.objectname = \"%s\" and tagging.tag_id = %d",
 		dbi,
 		tagsistant_return_integer,
 		&inode,
@@ -238,7 +238,7 @@ tagsistant_inode tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, db
 			// load the inode from the object table
 			if (!inode) {
 				tagsistant_query(
-					"select inode from objects where objectname = '%s'",
+					"select inode from objects where objectname = \"%s\"",
 					dbi, tagsistant_return_integer, &inode, objectname);
 			}
 
@@ -761,7 +761,7 @@ int tagsistant_querytree_parse_store (
 					tagsistant_query(
 						"select tagging.inode from tagging "
 							"join tags on tagging.tag_id = tags.tag_id "
-							"where tagging.inode = %d and tags.tagname = '%s'",
+							"where tagging.inode = %d and tags.tagname = \"%s\"",
 						qtree->dbi,
 						tagsistant_return_integer,
 						&tmp_inode,
@@ -1644,9 +1644,9 @@ tagsistant_querytree *tagsistant_querytree_new(
 	 * do some logging...
 	 */
 	dbg('q', LOG_INFO, "inode = %d", qtree->inode);
-	dbg('q', LOG_INFO, "object_path = '%s'", qtree->object_path);
-	dbg('q', LOG_INFO, "archive_path = '%s'", qtree->archive_path);
-	dbg('q', LOG_INFO, "full_archive_path = '%s'", qtree->full_archive_path);
+	dbg('q', LOG_INFO, "object_path = \"%s\"", qtree->object_path);
+	dbg('q', LOG_INFO, "archive_path = \"%s\"", qtree->archive_path);
+	dbg('q', LOG_INFO, "full_archive_path = \"%s\"", qtree->full_archive_path);
 
 	/*
 	 * guess if query points to an object on disk or not

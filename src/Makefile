@@ -14,7 +14,7 @@
 
 
 
-
+VPATH = /home/tx0/workspace/c/tagsistant-0.8.2/src
 am__is_gnu_make = test -n '$(MAKEFILE_LIST)' && test -n '$(MAKELEVEL)'
 am__make_running_with_option = \
   case $${target_option-} in \
@@ -148,7 +148,7 @@ AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
-DEFAULT_INCLUDES = -I. -I$(top_builddir)
+DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -246,7 +246,7 @@ AR = ar
 AUTOCONF = autoconf
 AUTOHEADER = autoheader
 AUTOMAKE = automake-1.14
-AWK = mawk
+AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = -D_DEBUG_SYSLOG -g -O2 -D_FILE_OFFSET_BITS=64 -Wall -W
@@ -301,10 +301,10 @@ SET_MAKE =
 SHELL = /bin/bash
 STRIP = strip
 VERSION = 0.8.1
-abs_builddir = /home/tx0/workspace/c/tagsistant-0.8/src
-abs_srcdir = /home/tx0/workspace/c/tagsistant-0.8/src
-abs_top_builddir = /home/tx0/workspace/c/tagsistant-0.8
-abs_top_srcdir = /home/tx0/workspace/c/tagsistant-0.8
+abs_builddir = /home/tx0/workspace/c/tagsistant-0.8.2//src
+abs_srcdir = /home/tx0/workspace/c/tagsistant-0.8.2/src
+abs_top_builddir = /home/tx0/workspace/c/tagsistant-0.8.2/
+abs_top_srcdir = /home/tx0/workspace/c/tagsistant-0.8.2
 ac_ct_AR = ar
 ac_ct_CC = gcc
 ac_ct_DUMPBIN = 
@@ -333,7 +333,7 @@ host_vendor = unknown
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/tx0/workspace/c/tagsistant-0.8/install-sh
+install_sh = ${SHELL} /home/tx0/workspace/c/tagsistant-0.8.2/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -347,12 +347,12 @@ program_transform_name = s,x,x,
 psdir = ${docdir}
 sbindir = ${exec_prefix}/sbin
 sharedstatedir = ${prefix}/com
-srcdir = .
+srcdir = /home/tx0/workspace/c/tagsistant-0.8.2/src
 sysconfdir = ${prefix}/etc
 target_alias = 
 top_build_prefix = ../
 top_builddir = ..
-top_srcdir = ..
+top_srcdir = /home/tx0/workspace/c/tagsistant-0.8.2
 SUBDIRS = plugins
 tagsistant_SOURCES = tagsistant.c\
 	tagsistant.h\

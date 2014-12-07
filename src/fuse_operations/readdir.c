@@ -322,7 +322,7 @@ int tagsistant_readdir_on_store(
 
 		} else if (qtree->operator) {
 			tagsistant_query(
-				"select distinct value from tags where tagname = '%s' and `key` = '%s'",
+				"select distinct value from tags where tagname = \"%s\" and `key` = \"%s\"",
 				qtree->dbi, tagsistant_add_entry_to_dir, ufs,
 				qtree->namespace, qtree->key);
 
@@ -334,7 +334,7 @@ int tagsistant_readdir_on_store(
 
 		} else if (qtree->namespace) {
 			tagsistant_query(
-				"select distinct `key` from tags where tagname = '%s'",
+				"select distinct `key` from tags where tagname = \"%s\"",
 				qtree->dbi, tagsistant_add_entry_to_dir, ufs,
 				qtree->namespace);
 
@@ -442,17 +442,17 @@ int tagsistant_readdir_on_relations(
 	} else if (qtree->related_key) {
 
 		if (qtree->namespace)
-			condition1 = g_strdup_printf("(tags1.tagname = '%s' and tags1.`key` = '%s' and tags1.value = '%s') ", qtree->namespace, qtree->key, qtree->value);
+			condition1 = g_strdup_printf("(tags1.tagname = \"%s\" and tags1.`key` = \"%s\" and tags1.value = \"%s\") ", qtree->namespace, qtree->key, qtree->value);
 		else
-			condition1 = g_strdup_printf("(tags1.tagname = '%s') ", qtree->first_tag);
+			condition1 = g_strdup_printf("(tags1.tagname = \"%s\") ", qtree->first_tag);
 
-		condition2 = g_strdup_printf("(tags2.tagname = '%s' and tags2.`key` = '%s') ", qtree->related_namespace, qtree->related_key);
+		condition2 = g_strdup_printf("(tags2.tagname = \"%s\" and tags2.`key` = \"%s\") ", qtree->related_namespace, qtree->related_key);
 
 		tagsistant_query(
 			"select distinct tags2.value from tags as tags2 "
 				"join relations on tags2.tag_id = relations.tag2_id "
 				"join tags as tags1 on tags1.tag_id = relations.tag1_id "
-				"where %s and %s and relation = '%s'",
+				"where %s and %s and relation = \"%s\"",
 			qtree->dbi,
 			tagsistant_add_entry_to_dir,
 			ufs,
@@ -463,17 +463,17 @@ int tagsistant_readdir_on_relations(
 	} else if (qtree->related_namespace) {
 
 		if (qtree->namespace)
-			condition1 = g_strdup_printf("(tags1.tagname = '%s' and tags1.`key` = '%s' and tags1.value = '%s') ", qtree->namespace, qtree->key, qtree->value);
+			condition1 = g_strdup_printf("(tags1.tagname = \"%s\" and tags1.`key` = \"%s\" and tags1.value = \"%s\") ", qtree->namespace, qtree->key, qtree->value);
 		else
-			condition1 = g_strdup_printf("(tags1.tagname = '%s') ", qtree->first_tag);
+			condition1 = g_strdup_printf("(tags1.tagname = \"%s\") ", qtree->first_tag);
 
-		condition2 = g_strdup_printf("(tags2.tagname = '%s' ) ", qtree->related_namespace);
+		condition2 = g_strdup_printf("(tags2.tagname = \"%s\" ) ", qtree->related_namespace);
 
 		tagsistant_query(
 			"select distinct tags2.key from tags as tags2 "
 				"join relations on tags2.tag_id = relations.tag2_id "
 				"join tags as tags1 on tags1.tag_id = relations.tag1_id "
-				"where %s and %s and relation = '%s'",
+				"where %s and %s and relation = \"%s\"",
 			qtree->dbi,
 			tagsistant_add_entry_to_dir,
 			ufs,
@@ -484,15 +484,15 @@ int tagsistant_readdir_on_relations(
 	} else if (qtree->relation) {
 
 		if (qtree->namespace)
-			condition1 = g_strdup_printf("(tags1.tagname = '%s' and tags1.`key` = '%s' and tags1.value = '%s') ", qtree->namespace, qtree->key, qtree->value);
+			condition1 = g_strdup_printf("(tags1.tagname = \"%s\" and tags1.`key` = \"%s\" and tags1.value = \"%s\") ", qtree->namespace, qtree->key, qtree->value);
 		else
-			condition1 = g_strdup_printf("(tags1.tagname = '%s') ", qtree->first_tag);
+			condition1 = g_strdup_printf("(tags1.tagname = \"%s\") ", qtree->first_tag);
 
 		tagsistant_query(
 			"select distinct tags2.tagname from tags as tags2 "
 				"join relations on relations.tag2_id = tags2.tag_id "
 				"join tags as tags1 on tags1.tag_id = relations.tag1_id "
-				"where %s and relation = '%s'",
+				"where %s and relation = \"%s\"",
 			qtree->dbi,
 			tagsistant_add_entry_to_dir,
 			ufs,
@@ -511,7 +511,7 @@ int tagsistant_readdir_on_relations(
 
 		tagsistant_query(
 			"select distinct value from tags "
-				"where tagname = '%s' and `key` = '%s'",
+				"where tagname = \"%s\" and `key` = \"%s\"",
 			qtree->dbi,
 			tagsistant_add_entry_to_dir,
 			ufs,
@@ -522,7 +522,7 @@ int tagsistant_readdir_on_relations(
 
 		tagsistant_query(
 			"select distinct `key` from tags "
-				"where tagname = '%s'",
+				"where tagname = \"%s\"",
 			qtree->dbi,
 			tagsistant_add_entry_to_dir,
 			ufs,
@@ -576,9 +576,9 @@ int tagsistant_readdir_on_tags(
 	} else if (qtree->value) {
 		// nothing
 	} else if (qtree->key) {
-		tagsistant_query("select distinct value from tags where tagname = '%s' and `key` = '%s'", qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->namespace, qtree->key);
+		tagsistant_query("select distinct value from tags where tagname = \"%s\" and `key` = \"%s\"", qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->namespace, qtree->key);
 	} else if (qtree->namespace) {
-		tagsistant_query("select distinct `key` from tags where tagname = '%s'", qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->namespace);
+		tagsistant_query("select distinct `key` from tags where tagname = \"%s\"", qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->namespace);
 	} else {
 		// list all tags
 		tagsistant_query("select distinct tagname from tags", qtree->dbi, tagsistant_add_entry_to_dir, ufs);
@@ -798,39 +798,39 @@ static int tagsistant_add_to_fileset(void *hash_table_pointer, dbi_result result
  */
 void tagsistant_query_add_and_set(GString *statement, qtree_and_node *and_set)
 {
-	if (and_set->value) {
+	if (and_set->value && strlen(and_set->value)) {
 		switch (and_set->operator) {
 			case TAGSISTANT_EQUAL_TO:
 				g_string_append_printf(statement,
-					"tagname = '%s' and `key` = '%s' and value = '%s' ",
+					"tagname = \"%s\" and `key` = \"%s\" and value = \"%s\" ",
 					and_set->namespace,
 					and_set->key,
 					and_set->value);
 				break;
 			case TAGSISTANT_CONTAINS:
 				g_string_append_printf(statement,
-					"tagname = '%s' and `key` = '%s' and value like '%%%s%%' ",
+					"tagname = \"%s\" and `key` = \"%s\" and value like '%%%s%%' ",
 					and_set->namespace,
 					and_set->key,
 					and_set->value);
 				break;
 			case TAGSISTANT_GREATER_THAN:
 				g_string_append_printf(statement,
-					"tagname = '%s' and `key` = '%s' and value > '%s' ",
+					"tagname = \"%s\" and `key` = \"%s\" and value > \"%s\" ",
 					and_set->namespace,
 					and_set->key,
 					and_set->value);
 				break;
 			case TAGSISTANT_SMALLER_THAN:
 				g_string_append_printf(statement,
-					"tagname = '%s' and `key` = '%s' and value < '%s' ",
+					"tagname = \"%s\" and `key` = \"%s\" and value < \"%s\" ",
 					and_set->namespace,
 					and_set->key,
 					and_set->value);
 				break;
 		}
 	} else if (and_set->tag) {
-		g_string_append_printf(statement, "tagname = '%s' ", and_set->tag);
+		g_string_append_printf(statement, "tagname = \"%s\" ", and_set->tag);
 	} else if (and_set->tag_id) {
 		g_string_append_printf(statement, "tagging.tag_id = %d ", and_set->tag_id);
 	}
