@@ -1,0 +1,345 @@
+0.8.1:
+  - Implemented the 'required' relation. If a tag M is required by S
+    then the S tag is shown only if the M tag has been already included
+    by the last OR branch of the query, like in:
+
+      store/M/
+      store/P/Q/+/M/
+
+    but will not be shown in:
+
+      store/P/
+      store/P/+/Q/
+
+    The goal of this relation is to organize the tags in a hierarchical
+    structure to keep the root directory clean. It somehow complement the
+    function of namespaces.
+
+  - Support for POSIX ACL on objects stored inside the store/ dir
+
+  - Goes in the background before calling fuse_main(), which prevents
+    the autotagging thread from being properly scheduled
+
+0.8:
+  - Triple tags (a.k.a. machine tags) first implementation!
+
+  - renamed the tags/ directory as store/ and created a new tags/
+    directory to allow a cleaner tag management from file managers
+
+  - Alias first implementation. The user can create files in the
+    alias/ directory. Each file contains a portion of a query.
+    Aliases are listed inside the store/ directory like ordinary
+    tags, but prefixed with an "=" sign. When the user includes
+    the alias in a query it gets expanded.
+
+  - fixed a bug in src/fuse_operations/flush.c which prevented
+    proper file deduplication
+
+  - the same bug caused a "too many open file" error; now fixed
+
+  - first implementation of the negation operator -/ which subtracts
+    from the result sets all the files that are tagged with the
+    tag following the operator. For example:
+
+      ~/myfiles/store/t1/t2/-/t3/@@
+    
+    returns the files tagged as t1 and t2 but not tagged as t3.
+
+  - Added an SQL index on objects(checksum, inode) to speed up
+    deduplication on large file sets
+
+  - Implemented a hierarchical structure under archive/ to avoid
+    to overcrowd it. The last TAGSISTANT_ARCHIVE_DEPTH digits of
+    the object inode are reversed to form the hierarchy. If the
+    depth is set to 1000 (three levels, a level per each zero),
+    the object 87312___file.txt will be saved as:
+    
+      archive/2/1/3/87312___file.txt
+
+  - removed call to dbi_conn_ping() if SQLite is used as backend.
+    This should avoid a "no table in statement" warning returned
+    by libDBI version provided on some distros (ArchLinux).
+    Thanks to Jeremy Self for reporting.
+
+  - fixed src/plugin.c for compiling against libextractor 0.6/1.x
+    Thanks to Jeremy Self for providing the patch.
+
+  - fixed relations/ paths parsing.
+    Thanks to Jeremy Self for reporting.
+
+  - implemented relations between flat and triple tags. Adapted the
+    reasoner too.
+
+  - parameter escaping in tagsistant_real_query() to prevent SQL
+    injection and problems with filenames with single quotes inside
+
+  - fixed tag_id caching
+
+  - simplified the SQL query to check tagging of a file
+
+  - implemented the ALL/ metatag which lists all the files in the
+    repository. Files can be deleted from the ALL/ tag, but can't be
+    created. This tag is also useful to re-scan the whole repository
+    when a new autotagging plugin is added, by just doing a:
+
+      $ touch ~/myfiles/store/ALL/@@/*
+    
+    Each file will be rescanned for tags and deduplicated too.
+
+  - Added GLib based option parsing to allow mounting tagsistant from
+    /etc/fstab
+
+  - Added SVN revision number to build number. The new schema is:
+
+      SVN.date.progressive
+
+    where SVN is the svn revision number and date has the format YYYYMMDD.
+
+  - Implemented tag groups using curly braces. A group of tags form a
+    set of alternative tags that are equivalent for file matching. For
+    example if the user wants all the files matching t1 and one of t2 or
+    t3, she can express the query as:
+
+      store/t1/{/t2/t3/}/@@
+    
+    This query is equivalent to:
+
+      store/t1/t2/+/t1/t3/@@
+    
+    The benefit of this feature is evident when possible permutations
+    increase, like in:
+
+      store/t1/{/t2/t3/}/{/t4/t5/}@@
+    
+    where the query without tag groups would require four separate sets:
+
+      store/t1/t2/t4/+/t1/t2/t5/+/t1/t3/t4/+/t1/t3/t5/@@
+    
+    Tag groups allow the use of both simple and triple tags. Tag groups
+    can _not_ be nested.
+
+  - Changed quote char in SQL queries with single quotes in place of double
+    quotes. This fixed a bug which prevented the use of 'key' as a tag.
+
+  - Implemented a startup procedure that checks for missing checksums in
+    the objects table.
+
+  - Implemented the "excludes" relation between tags
+
+  - Implemented the tags suffix. When appended to an object path it
+    automagically generates a file listing all the tags applied to the
+    object. For example, if the user creates the file:
+
+      touch ~/myfiles/store/t1/t2/@@/file.txt
+    
+    he can list the file tags by:
+
+      cat ~/myfiles/store/t1/@@/file.txt.tags
+      t1
+      t2
+      document
+      [...]
+
+    This applies to any object, including directories:
+
+	  mkdir ~/myfiles/store/t1/t2/@@/mydir
+	  cat ~/myfiles/store/t1/t2/@@/mydir.tags
+	  t1
+	  t2
+
+    The suffix can be configured with the command line argument
+	--tags-suffix=<.tags>
+
+  - Error reporting system: when a query is syntactically wrong,
+    Tagsistant list only one file called "error" which contains a
+    useful error message
+  
+  - Davide Eynard spotted an error on reading established relations.
+    Fixed by replacing double quotes with single quotes on a SQL query
+    inside readdir()
+
+  - Implemented a read check on /etc/fuse.conf to grant the used is
+    member of the fuse group. Thanks again to Davide Eynard for pointing
+    me on this.
+
+  - Autofix the archive/ structure from the old flat structure to the new
+    hierarchical structure based on reversed inodes.
+
+0.7:
+  - libextractor integration. Tagging plugins have been converted to
+    the new API.
+
+  - multiple version of libextractor (0.5.x and >= 0.6.x) are supported.
+    The code for 0.6.x still need some testing. The plugins should check
+    the values returned by libextractor to avoid meaningless tagging
+
+  - getattr() on relations/tag/... returned succesfully even if tag/
+    didn't exist. Fixed.
+
+  - tagsistant_open(), tagsistant_read() and tagsistant_write() now
+    reuse the filehandle by saving it in fuse_file_info.fh field.
+
+  - created tagsistant_invalidate_and_set_cache_entries() and used in
+    tagsistant_querytree_find_duplicates(), tagsistant_unlink(),
+    tagsistant_rmdir() and tagsistant_rename() to properly delete
+    cache entries.
+
+  - the plugins save their filter regexp in the repository.ini file
+    each in its own section named [mime:mime/type] where mime/type
+    is the mime-type processed by the plugin.
+
+  - added a Mutex for the SQLite backend to solve concurrency problems
+    related to database locks
+
+  - added deduplication for symlinks; if a link to /some/path exists
+    in the repository and a new one is created, the tags of the
+    new one are applied to the existing object
+
+  - added a new boolean parameter to tagsistant_querytree_new() to
+    explicitly ask for a database connection; where the function
+    gets called twice in one operation (rename, symlink, link, ...)
+    one call will avoid the database connection creation
+
+  - fixed building with libextractor 1.x (thanks to rkfg for reporting
+    and to Ivan Kolmycheck for suggesting the fix).
+
+0.6.1:
+  - tag_id cache wasn't invalidated when a tag was renamed. Fixed.
+    Thanks to Chiffa for reporting the bug.
+
+  - tagsistant_guess_inode_from_and_set() didn't check object existence
+    using a proper SQL query. Fixed by adding multiple condition, one
+    for each AND-set, and using group by on object.inode.
+
+  - getattr() on relations/tag/... returned succesfully even if tag/
+    didn't exist. Fixed.
+
+  - nonexisting files in stats/ are no longer reported as existing by
+    getattr()
+
+0.6:
+  - Removed do_reasoning argument from tagsistant_querytree_new(), being
+    obsoleted by the '@@' operator.
+
+  - Solved two bugs in deduplication which prevented real unlink() of the
+    file from disk and leaved the old inode stored in AND_SET cache.
+
+0.6 rc6:
+  - Implemented no reasoning ending tag "@@" which prevents the reasoner
+    from being called. Only objects with direct tagging will be returned
+    as query results. Very useful while doing housekeeping of the archive,
+    moving files in subtags. A new constant has been defined in tagsistant.h:
+
+      #define TAGSISTANT_QUERY_DELIMITER_NO_REASONING "@@"
+
+    and its value is reported by stats/configuration.
+    
+  - Added tagsistant_querytree_check_tagging_consistency() call to:
+      src/fuse_operations/rmdir.c
+      src/fuse_operations/release.c
+      src/fuse_operations/flush.c
+      src/fuse_operations/unlink.c
+
+  - Changed tagsistant_rename() to return EXDEV if both from and to paths
+    are not taggable. This will cause calling program to use
+    open-read/write-close cycle to copy files. This is required if you
+    are moving myfiles/tags/t1/@/directory/files* to myfiles/tags/t2/@/
+    because source files* are not tagsistant managed objects (hence
+    is_taggable is 0).
+
+0.6 rc5:
+  - Fixed a bug in src/fuse_operations/readdir.c which caused the inclusion
+    of '@' and '+' even after a '+/' ending path.
+
+  - fixed a bug in mkdir() which used tagsistant_create_and_tag_object() in
+    place of tagsistant_force_create_and_tag_object()
+
+  - reduced reasoner SQL queries
+
+  - enabled some caches, properly working
+
+  - tagsistant_querytree_check_tagging_consistency() moved from
+    tagsistant_querytree_new() to fuse_operations, where appropriated:
+      getattr.c
+      link.c
+      mkdir.c
+      mknod.c
+      open.c
+      symlink.c
+
+  - mknod() created new files using provided mode_t permissions. If user
+    was not granted write permission, following open() and write() calls
+    would fail. I've forced S_IWUSR in mknod() mode_t permissions to fix
+    the situation.
+
+  - If requested DBD driver is not available, a message is printed
+
+  - Debugging output uses --debug=<profile> switch, where <profile> is a
+    string containing any combination of the following flags:
+
+      b: boot
+      c: cache
+      f: file tree (readdir)
+      F: FUSE operations (open, read, write, symlink, ...)
+      l: low level
+      p: plugin
+      q: query parsing
+      r: reasoning
+      s: SQL queries
+      2: deduplication
+
+  - Implemented tag_id cache.
+  
+  - Implemented inode resolution by objectname and and_set cache.
+  
+  - Moved resoning code to reasoner.c
+
+  - Deleted some dead code.
+
+  - Avoided some transactions where no SQL insert/update were involved.
+
+0.6 rc4:
+  - When a tagsistant_querytree object was fetch from the cache, the
+    transaction_started field were not set accordingly to
+    tagsistant_querytree_new() actual parameters, thus preventing proper
+    SQL transaction commit. This bug was especially evident inside
+    rename() calls.
+    
+  - stats/ now contains some meaningful files:
+      cached_queries: how many queries got cached
+      configuration: the whole configuration given at run time
+      connections: how many connections to SQL are active
+      objects: how many objects are tagged
+      relations: how many relations are established
+      tags: how many tags have been created
+
+  - repository.ini file implementation
+
+  - removed any warning at compile time
+
+  - code cleanup
+    
+0.6 rc3:
+  - Queries are cached. Since a lot of time is spent by
+    tagsistant_querytree_new() in reasoning the tags of a query,
+    once is done a copy of the data structure is saved in a hash
+    table and later reloaded. Performance improved by a 5-10x.
+    
+  - Tag removal (rmdir ~/mifiles/tags/a_tag/) lead to an error. Bug
+    reported by Lingnan.
+    
+  - Speeds up reasoning by cutting one SQL query every three.
+
+0.6 rc2:
+  - Bug reported by Matei David:
+      $ mkdir myfiles/tags/tag-a
+      $ mkdir myfiles/tags/tag-b
+      $ touch some-file
+      $ cp some-file myfiles/tags/tag-a/tag-b/@/
+      $ rm myfiles/tags/tag-b/@/some-file
+      $ ls myfiles/tags/tag-a/@/
+        ls: cannot access myfiles/tags/tag-a/@/some-file: No such file or directory
+
+0.6 rc1:
+  - Introduces universal tagging: not just files can be tagged, but
+    directories and devices and pipes too.

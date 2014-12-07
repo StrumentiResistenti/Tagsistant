@@ -1,0 +1,35 @@
+1)	tutti gli oggetti vengono mappati sul filesystem
+2)	tutti gli oggetti vengono identificati da un nome composto dall'ID sql + l'originale
+3)	se un oggetto viene symlinkato, viene solo inserito nel db una entry che lo fa puntare all'originale
+4)	se un oggetto viene creato (mkdir, open, creat) allora viene depositato nel backend di tagsistant
+5)	gli oggetti nel backend sono organizzati in directory progressive. esempio: il file 3482_prova.txt si
+	trova in <backend>/3/4/8/2/3482_prova.txt. Questo migliora le performance.
+6)	la struttura del database è quindi modificata. La tabella degli oggetti è fatta così:
+
+	create table objects (
+		id integer not null primary key autoincrement,
+		filename text(255) not null,
+		path text(1024) unique not null);
+
+	Il campo filename contiene il singolo nome di file. Il campo path contiene il path completo. Nel caso
+	di un oggetto contenuto nel backend il path inizierà con la sequenza convenzionale "<tagsistant>". In
+	caso di oggetto esterno, il path sarà assoluto.
+
+7)	Ogni riferimento ad un oggetto da altre tabelle avverà per ID
+
+	create table tags (
+		id integer primary key autoincrement not null,
+		tagname varchar(64) unique not null)
+
+	create table tagging (
+		inode integer not null primary key autoincrement,
+		tag_id text(64) not null,
+		constraint Tagging_key unique (inode, tag_id));
+
+	Ad esempio la tabella tagging associa tag e oggetti per ID
+
+8)	le query (i path) dovranno essere smontati come segue:
+	a) divisione in token
+	b) elaborazione dell'albero della query
+	c) riaggregazione degli elementi in eccesso a formare il path finale (in modo che una query
+	possa puntare anche ad un sottoelemento di una dir)

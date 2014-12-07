@@ -1,0 +1,31 @@
+- The short way
+
+$ ./configure
+$ make
+$ sudo make install
+
+- The explained way
+
+Tagsistant uses autotools from GNU project to be portable across Unices.
+To build Tagsistant you just need to run the ./configure script provided
+inside this repository or archive.
+
+Tagsistant provides some options to customize configure script behaviour.
+Tagsistant specific options are:
+
+  --enable-debug-stderr   print debugging statements on stderr instead of
+                          using syslog [default=syslog]
+
+  --enable-debug-free     double check before free()ing a symbol [default=no]
+
+For a complete list, use ./configure --help. For an explanation of the
+whole process please refer to INSTALL.GNU file.
+
+- Dependencies
+
+Tagsistant uses some external libraries you need to install before compiling.
+The most important one is libfuse, a library which enables user space
+applications to talk with kernel to provide a filesystem-like interface.
+
+Each autotagging plugin will require specific libraries. Read carefully
+the output of ./configure.

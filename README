@@ -1,0 +1,169 @@
+Welcome to Tagsistant, a personal manager for your files. Tagsistant is
+a semantic file system for Linux and BSD kernels. It's based on FUSE
+library and kernel module, so it's a userspace application.
+
+TOC:
+  1. Introduction
+  2. How Tagsistant works
+  3. Semantics
+  4. Plugins
+
+1. Introduction
+
+Tagsistant is a semantic file system for Linux and BSD kernels. Its
+goal is to allow users to catalog files using tags (labels, mnemonic
+informations) rather than directories. But since it is also a file
+system, it's based on directories. How the two concepts relate?
+
+It's quite simple. You are, of course, already familiar with file
+systems interface: a hierarchical structure of directories which
+hosts files (and other objects like devices, sockets and more).
+
+Tagsistant use directories with another meaning. It doesn't give to
+a directory its ususal folder meaning. It uses directories as tags.
+As a consequence, each file inside a directory is tagged by that
+directory.
+
+To create a new tag, just create a directory. To tag a file just
+copy or link it inside the directory you wish.
+
+2. How Tagsistant works
+
+In our example, we'll assume that tags/ is a directory which is
+under tagsistant control, and that, inside this directory there
+are two directories called "music" and "photo", filled as in the
+following scheme:
+
+tags/
+  music/
+    song1.mp3
+    song2.wav
+  photo/
+    img_3233.jpg
+    img_3459.jpg
+
+Assuming this hierarchy is a Tagsistant managed space, the files
+song1.mp3 and song2.wav are tagged as music, and the files
+img_3233.jpg and img_3459.jpg are tagged as photo. Let suppose that
+image img_3233.jpg and file song2.wav came from a friend named
+Jack and you want to record that information inside your Tagsistant
+space. All you have to do is:
+
+$ mkdir tags/jack/
+$ cp music/song2.wav tags/jack/
+$ cp photo/img_3233.jpg tags/jack/
+
+Resulting hierarchy will be as follows:
+
+tags/
+  music/
+    song1.mp3
+    song2.wav
+  photo/
+    img_3233.jpg
+    img_3459.jpg
+  jack/
+    img_3233.jpg
+    song2.wav
+
+You may ask: that can be done with a normal filesystem. And you'll be
+right. But with a difference. Tagsistant will store song2.wav and
+img_3233.jpg just one time, saving space.
+
+But having such a hierarchy would be of little or no help in searching
+your files if you are not able to perform a logical query. Here enters
+Tagsistant. Using the path, a concept your are already used to play with,
+you can perform queries inside a Tagsistant space. How? Look at following
+example:
+
+$ ls tags/jack/
+AND/ OR/ song2.wav img_3233.jpg
+$ ls tags/jack/AND/
+photo/ music/
+$ ls tags/jack/AND/music/
+song2.wav
+$
+
+The path "jack/AND/music/" will result in all the files tagged as both
+"jack" and "music". The AND special directory can be used to create a
+set of criteria which should match togheter to fullfill the query. As
+opposite, the OR special directory allows more powerful queries, by
+concatenating the results of more than one set of AND-chained criteria.
+
+As an example:
+
+$ ls tags/jack/AND/music/
+song2.wav
+$ ls tags/photos/
+img_3233.jpg img_3459.jpg
+$ ls tags/jack/AND/music/OR/photos/
+song2.wav img_3233.jpg img_3459.jpg
+$
+
+3. Semantics
+
+All you have seen so far is already enough to make Tagsistant an
+interesting tool. But to be really powerful, something more needs to
+be added. For example, think of music genres, like rock, heavy metal
+and jazz. You, off course, are a fine music listener which loves to
+catalogue its music by genre. You used Tagsistant to create rock/,
+jazz/ and heavy_metal/ tags. But you are tired of using a query like:
+
+$ ls tags/rock/OR/jazz/OR/heavy_metal/
+
+every time you need to display your complete collection. You will
+love really a lot more to teach Tagsistant that music/ is an alias
+for all that ones. How to do it?
+
+Tagsistant embeds a simple reasoning engine which allows you to
+establish relations between two tags. Two kind of relations are
+allowed so far: inclusion and equivalence. The first one is what
+will solve our problem.
+
+First of all, you create a new music/ tag:
+
+$ mkdir tags/music/
+
+Then you use Tagsistant manager, which is a Gtk+ application included
+in Tagsistant distribution to create a new relation, stating that:
+
+"music" "includes" "rock"
+
+and other two, stating that:
+
+"music" "includes" "heavy_metal"
+
+and 
+
+"music" "includes" "jazz"
+
+Now, all you have to do is just:
+
+$ ls tags/music/
+[lot of jazz and metal and rock files here...]
+$
+
+Of course, using heavy_metal with the underscore to play nicely with
+the file system is something your eye can't tolerate. So you create a
+new tag:
+
+$ mkdir tags/heavy\ metal/
+
+and add a new relation:
+
+"heavy metal" "is equivalent" "heavy_metal"
+
+4. Plugins
+
+Tagsistant also come with a plugin API to extend its behaviour. Some
+experimental plugins for .ogg .mp3 .xml .html and other formats are
+provided. What they do is add more tags to a file, using specific
+procedures.
+
+So far, autotagging plugins does not inspect file contents. Just add
+a generic tag (like "audio" for .ogg and .mp3 files) but in the near
+future, using proper libraries, contents will be extracted and used
+to autotag files (like ID3 tags for MP3 files).
+
+If you want to contribute a plugin for Tagsistant, please read the
+howto at http://www.tagsistant.net/write_plugin.shtml

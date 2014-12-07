@@ -1,0 +1,152 @@
+il filesystem presenta alcune directory particolari
+
+a) /stats: fornisce informazioni relative al funzionamento interno e allo stato
+b) /archive: contiene tutti i file - è necessaria per taggare file contenuti in tagsistant
+c) /tags: contiene le tag - da qui si possono fare le query
+d) /relations: contiene informazioni sulle relazioni fra le tag.
+
+La sintassi di una query è:
+
+/tags/tag_set[/+/tag_set[/+/...]]/=/object_path/
+1     2       2b         2c       3 4
+
+composta dai seguenti elementi:
+
+1) /tags - prefisso di ogni query
+2) /tag_set - un set consecutivo di tag che può essere sommato ad un secondo set di tag mediante l'operatore +
+3) /= - delimita la fine di una query
+4) /object_path - il path puntato dall'oggetto
+
+Un accesso diretto ad un file invece segue la seguente query:
+
+/archive/object_path
+1        2
+
+Da questo consegue che:
+
+*) /file.txt è un path invalido!!!
+*) /tags/... inizia per forza una query
+*) /archive/... identifica per forza un oggetto su disco, anche se remoto
+*) /tags/t1/... deve proseguire con un operatore
+*) /tags/t1/t2/... è una query invalida
+
+TRATTAMENTO DI UN PATH:
+1) scomposizione in token
+2) recupero del primo token: modalità di interpretazione del path
+
+	TRATTAMENTO DI UN PATH /archive:
+	1) se il path è nullo, elenca tutti gli oggetti presenti in archivio
+	2) se il path non è nullo, punta ad un singolo oggetto
+
+	TRATTAMENTO DI UN PATH /tags:
+	1) se il path contiene '=' allora è una query compiuta. si divide in query e object_path
+	2) se object_path non è nullo, allora è inutile analizzare la query
+	3) se object_path è nullo allora lista i risultati della query
+	4) se il path non contiene '=' allora la query è in elaborazione. lista le tag
+	   disponibili, escluse quelle già presenti nel tag_set corrente
+	
+	TRATTAMENTO DI UN PATH /relations:
+	1) se il path è nullo, elenca tutte le tag
+	2) se il path ha un livello, è una tag. elenca tutte le relazioni disponibili
+	3) se il path ha due livelli, è una relazione di cui è specificata una tag.
+	   elenca le tag a cui si applica la relazione. esempio:
+	   /relations/music/includes/ [rock, pop, jazz, ...]
+
+1. l'utente fa una chiamata passando una query
+2. la query viene trasformata in un querytree
+3. se necessario il querytree genera una objectlist
+
+vediamo caso per caso gli schemi di funzionamento
+
+1. tagsistant_getattr path
+	build_querytree
+	if object_path
+		return stat object_path
+	else
+		return stat tagsistant.archive
+
+2. tagsistant_readlink path
+	build_querytree
+	if object_path
+		return readlink object_path
+	else
+		return error
+
+3. tagsistant_readdir path
+	build_querytree
+	if object_path
+		return readdir object_path
+	else if valid query
+		return readdir querytree
+	else
+		return error
+
+4. tagsistant_mknod path mode
+	build_querytree
+	if object_path
+		return mknod object_path mode
+	else
+		return error
+
+5.  tagsistant_mkdir path mode
+	build_querytree
+	if directory is first level
+		return make tag
+	else if directory is second level
+		mkdir
+		tag new dir for all querytree tags
+		return
+	else
+		return mkdir
+
+6. tagsistant_symlink old new
+	build_querytree old # always absolute path
+	build_querytree new # always relative path
+
+	if not qtree_old.object_path
+		return
+	
+	if not qtree_new.object_path
+		destination_filename = qtree_old.object_path
+	else
+		destination_filename = qtree_new.object_path
+
+	qtree_iterate qtree_old 	
+	if qtree_new.object_path depth == 1
+		tag file as first level name
+	if object_path
+		insert object_path into database
+		tag object_path with all tags of "old" path
+	else
+		symlink file in directory
+
+7. tagsistant_unlink
+	build_querytree
+	if object_path
+		return unlink object_path
+	else
+		return error
+	
+8. tagsistant_rmdir
+	build_querytree
+	if ! object_path 
+		delete all tags
+	else if object_path is first level
+		untag object_path
+	else
+		rmdir object_path
+
+9. tagsistant_rename old new
+	build_querytree
+	if ! object_path
+
+tagsistant_link,
+tagsistant_chmod,
+tagsistant_chown,
+tagsistant_truncate,
+tagsistant_utime,
+tagsistant_open,
+tagsistant_read,
+tagsistant_write,
+tagsistant_statvfs,
+tagsistant_statfs,

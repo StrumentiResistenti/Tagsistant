@@ -1,0 +1,25 @@
+Come implementare il reasoning: lampo di genio! :-)
+
+1. il path viene parsato e tradotto in una struttura fatta
+di ptree_or_node_t e ptree_and_node_t
+
+2. gli "and_set" (ossia le catene di ptree_and_node_t) vengono
+sortate in ordine alfabetico e vengono eliminati eventuali
+duplicati all'interno della struttura
+
+3. per ogni or_set:
+3.1. per ogni and_set:
+3.1.1. per ogni and_tag vengono letti gli equivalenti nel db
+       usando un metodo ricorsivo
+
+4. la query viene quindi tradotta in un filetree. ogni volta
+che viene creata una view secondo la query ALL_FILES_TAGGED
+che al momento e':
+
+select filename from tagged where tagname = '%s'
+
+dovrebbe essere sufficiente aggiungere un:
+
+" or tagname = '%s'"
+
+dove %s e' ogni alias trovato per questa tag.
