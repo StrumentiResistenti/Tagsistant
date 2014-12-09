@@ -14,6 +14,7 @@ tagsistant_SOURCES = tagsistant.c\
 	plugin.c\
 	plugin.h\
 	deduplication.c\
+	rds.c\
 	buildnumber.h\
 	fuse_operations/operations.h\
 	fuse_operations/access.c\

@@ -80,6 +80,10 @@ int tagsistant_unlink(const char *path)
 			 */
 			tagsistant_invalidate_and_set_cache_entries(qtree);
 #endif
+
+
+			// clean the RDS library
+			tagsistant_delete_rds_involved(qtree);
 		}
 
 		// unlink the object on disk

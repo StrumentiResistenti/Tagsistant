@@ -73,6 +73,9 @@ int tagsistant_symlink(const char *from, const char *to)
 					NULL, NULL,
 					from, to_qtree->inode);
 			}
+
+			// clean the RDS library
+			tagsistant_delete_rds_involved(to_qtree);
 		} else
 
 		// nothing to do about tags

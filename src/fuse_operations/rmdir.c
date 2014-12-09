@@ -99,6 +99,9 @@ int tagsistant_rmdir(const char *path)
 			tagsistant_errno = errno;
 
 		}
+
+		// clean the RDS library
+		tagsistant_delete_rds_involved(qtree);
 	}
 
 	// -- relations --
@@ -138,6 +141,9 @@ int tagsistant_rmdir(const char *path)
 
 				tagsistant_invalidate_reasoning_cache(qtree->first_tag);
 				tagsistant_invalidate_reasoning_cache(qtree->second_tag);
+
+				// clean the RDS library
+				tagsistant_delete_rds_involved(qtree);
 			}
 		} else {
 			TAGSISTANT_ABORT_OPERATION(EROFS);

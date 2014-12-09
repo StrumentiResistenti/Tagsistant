@@ -377,17 +377,19 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 		qtree->is_taggable = 1;
 	}
 
-	// 2. use the object_first_element to guess if its tagged in the provided set of tags
-	qtree_or_node *or_tmp = qtree->tree;
-	while (or_tmp) {
-		inode = tagsistant_guess_inode_from_and_set(or_tmp->and_set, qtree->dbi, object_first_element);
+	// 2. use the object first element to guess if its tagged in the RDS
+	int rds_id = tagsistant_get_rds_id(qtree);
+	if (!rds_id) {
+		rds_id = tagsistant_materialize_rds(qtree);
+	}
 
-		if (inode) {
-			qtree->exists = 1;
-			break;
-		}
+	tagsistant_query(
+		"select inode from rds where objectname = \"%s\" and id = %d",
+		qtree->dbi, tagsistant_return_integer, &inode,
+		object_first_element, rds_id);
 
-		or_tmp = or_tmp->next;
+	if (inode) {
+		qtree->exists = 1;
 	}
 
 	g_free_null(object_first_element);

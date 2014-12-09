@@ -100,7 +100,7 @@ am_tagsistant_OBJECTS = tagsistant-tagsistant.$(OBJEXT) \
 	tagsistant-path_resolution.$(OBJEXT) \
 	tagsistant-reasoner.$(OBJEXT) tagsistant-sql.$(OBJEXT) \
 	tagsistant-utils.$(OBJEXT) tagsistant-plugin.$(OBJEXT) \
-	tagsistant-deduplication.$(OBJEXT) \
+	tagsistant-deduplication.$(OBJEXT) tagsistant-rds.$(OBJEXT) \
 	fuse_operations/tagsistant-access.$(OBJEXT) \
 	fuse_operations/tagsistant-chmod.$(OBJEXT) \
 	fuse_operations/tagsistant-chown.$(OBJEXT) \
@@ -366,6 +366,7 @@ tagsistant_SOURCES = tagsistant.c\
 	plugin.c\
 	plugin.h\
 	deduplication.c\
+	rds.c\
 	buildnumber.h\
 	fuse_operations/operations.h\
 	fuse_operations/access.c\
@@ -579,6 +580,7 @@ distclean-compile:
 include ./$(DEPDIR)/tagsistant-deduplication.Po
 include ./$(DEPDIR)/tagsistant-path_resolution.Po
 include ./$(DEPDIR)/tagsistant-plugin.Po
+include ./$(DEPDIR)/tagsistant-rds.Po
 include ./$(DEPDIR)/tagsistant-reasoner.Po
 include ./$(DEPDIR)/tagsistant-sql.Po
 include ./$(DEPDIR)/tagsistant-tagsistant.Po
@@ -731,6 +733,20 @@ tagsistant-deduplication.obj: deduplication.c
 #	$(AM_V_CC)source='deduplication.c' object='tagsistant-deduplication.obj' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tagsistant_CFLAGS) $(CFLAGS) -c -o tagsistant-deduplication.obj `if test -f 'deduplication.c'; then $(CYGPATH_W) 'deduplication.c'; else $(CYGPATH_W) '$(srcdir)/deduplication.c'; fi`
+
+tagsistant-rds.o: rds.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tagsistant_CFLAGS) $(CFLAGS) -MT tagsistant-rds.o -MD -MP -MF $(DEPDIR)/tagsistant-rds.Tpo -c -o tagsistant-rds.o `test -f 'rds.c' || echo '$(srcdir)/'`rds.c
+	$(AM_V_at)$(am__mv) $(DEPDIR)/tagsistant-rds.Tpo $(DEPDIR)/tagsistant-rds.Po
+#	$(AM_V_CC)source='rds.c' object='tagsistant-rds.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tagsistant_CFLAGS) $(CFLAGS) -c -o tagsistant-rds.o `test -f 'rds.c' || echo '$(srcdir)/'`rds.c
+
+tagsistant-rds.obj: rds.c
+	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tagsistant_CFLAGS) $(CFLAGS) -MT tagsistant-rds.obj -MD -MP -MF $(DEPDIR)/tagsistant-rds.Tpo -c -o tagsistant-rds.obj `if test -f 'rds.c'; then $(CYGPATH_W) 'rds.c'; else $(CYGPATH_W) '$(srcdir)/rds.c'; fi`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/tagsistant-rds.Tpo $(DEPDIR)/tagsistant-rds.Po
+#	$(AM_V_CC)source='rds.c' object='tagsistant-rds.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tagsistant_CFLAGS) $(CFLAGS) -c -o tagsistant-rds.obj `if test -f 'rds.c'; then $(CYGPATH_W) 'rds.c'; else $(CYGPATH_W) '$(srcdir)/rds.c'; fi`
 
 fuse_operations/tagsistant-access.o: fuse_operations/access.c
 	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tagsistant_CFLAGS) $(CFLAGS) -MT fuse_operations/tagsistant-access.o -MD -MP -MF fuse_operations/$(DEPDIR)/tagsistant-access.Tpo -c -o fuse_operations/tagsistant-access.o `test -f 'fuse_operations/access.c' || echo '$(srcdir)/'`fuse_operations/access.c
