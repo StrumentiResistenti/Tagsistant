@@ -200,6 +200,7 @@ struct tagsistant {
 	gboolean	debug;			/**< debug profile */
 	gchar		*debug_flags;	/**< debug flags as a string */
 	gchar 		dbg[128];		/**< debug flags */
+
 	gboolean	foreground;		/**< run in foreground */
 	gboolean	singlethread;	/**< single thread? */
 	gboolean	readonly;		/**< mount filesystem readonly */
@@ -209,6 +210,8 @@ struct tagsistant {
 	gboolean	show_help;		/**< show the help screen */
 	gboolean	open_permission;/**< use relaxed permissions (777) on tags and other meta-directories */
 	gboolean	enable_xattr;	/**< enable extended attributes (needed for POSIX ACL) */
+	gboolean	multi_symlink;	/**< allow multiple symlinks with the same name but different targets */
+
 	gchar		*tags_suffix;	/**< the suffix to be added to filenames to list their tags */
 	gchar		*namespace_suffix; /**< the suffix that distinguishes namespaces */
 	gchar		*triple_tag_regex; /**< namespace suffix detector regexp */
