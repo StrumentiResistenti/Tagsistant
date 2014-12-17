@@ -422,22 +422,12 @@ void tagsistant_create_schema()
 				dbi, NULL, NULL, TAGSISTANT_ALIAS_MAX_LENGTH);
 
 			tagsistant_query(
-				"create temporary table if not exists rds_index ("
-					"id integer not null primary key autoincrement, "
-					"query varchar(1024) not null)",
-				dbi, NULL, NULL);
-
-			tagsistant_query(
 				"create temporary table if not exists rds ("
-					"id integer not null, "
+					"id varchar(32) not null, "
+					"reasoned integer not null, "
 					"inode integer not null, "
-					"objectname text(255) not null)",
-				dbi, NULL, NULL);
-
-			tagsistant_query(
-				"create temporary table if not exists rds_tags ("
-					"id integer not null, "
-					"tag varchar(255))",
+					"objectname text(255) not null, "
+					"tagset text not null)",
 				dbi, NULL, NULL);
 
 			tagsistant_query("create index if not exists relations_index on relations (tag1_id, tag2_id)", dbi, NULL, NULL);
@@ -489,22 +479,12 @@ void tagsistant_create_schema()
 				dbi, NULL, NULL, TAGSISTANT_ALIAS_MAX_LENGTH);
 
 			tagsistant_query(
-				"create temporary table if not exists rds_index ("
-					"id integer not null primary key auto_increment, "
-					"query varchar(1024) not null)",
-				dbi, NULL, NULL);
-
-			tagsistant_query(
 				"create temporary table if not exists rds ("
-					"id integer not null, "
+					"id varchar(32) not null, "
+					"reasoned integer not null, "
 					"inode integer not null, "
-					"objectname text(255) not null)",
-				dbi, NULL, NULL);
-
-			tagsistant_query(
-				"create temporary table if not exists rds_tags ("
-					"id integer not null, "
-					"tag varchar(255))",
+					"objectname text(255) not null, "
+					"tagset text not null)",
 				dbi, NULL, NULL);
 
 			tagsistant_query("create index relations_index on relations (tag1_id, tag2_id)", dbi, NULL, NULL);
