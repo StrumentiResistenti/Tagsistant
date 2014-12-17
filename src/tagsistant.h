@@ -352,5 +352,5 @@ extern gchar *tagsistant_get_file_tags(tagsistant_querytree *qtree);
 extern GHashTable *tagsistant_rds_new(tagsistant_querytree *qtree, int is_all_path);
 extern void tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data);
 extern void tagsistant_delete_rds_involved(tagsistant_querytree *qtree);
-extern int tagsistant_materialize_rds(tagsistant_querytree *qtree);
-extern int tagsistant_get_rds_id(tagsistant_querytree *qtree);
+extern gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree);
+extern gchar *tagsistant_get_rds_id(tagsistant_querytree *qtree, int *materialized);
