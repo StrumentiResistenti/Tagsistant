@@ -19,6 +19,24 @@
 
 #include "../tagsistant.h"
 
+int tagsistant_create_symlink(tagsistant_querytree *to_qtree, const gchar *from, int *tagsistant_errno)
+{
+	dbg('F', LOG_INFO, "SYMLINK : Creating %s", to_qtree->object_path);
+
+	int res = tagsistant_force_create_and_tag_object(to_qtree, tagsistant_errno);
+
+	if (-1 != res) {
+		// save the target path for future checks
+		tagsistant_query(
+			"update objects set symlink = '%s' where inode = %d",
+			to_qtree->dbi,
+			NULL, NULL,
+			from, to_qtree->inode);
+	}
+
+	return (res);
+}
+
 int tagsistant_symlink(const char *from, const char *to)
 {
 	int tagsistant_errno = 0, res = 0;
@@ -43,35 +61,78 @@ int tagsistant_symlink(const char *from, const char *to)
 
 		// if qtree is taggable, do it
 		if (QTREE_IS_TAGGABLE(to_qtree)) {
-			// 1. check if a symlink pointing to "from" path is already in the DB
 			tagsistant_inode check_inode = 0;
-			tagsistant_query(
-				"select inode from objects where symlink = '%s'",
-				to_qtree->dbi,
-				tagsistant_return_integer,
-				&check_inode,
-				from);
 
-			if (check_inode) {
+			if (tagsistant.multi_symlink) {
+				// 1. check if an object with the same name exists in the RDS
+				gchar *rds_id = tagsistant_get_rds_checksum(to_qtree);
 
-				// 2.1. tag the available symlink with the new tag set
-				dbg('F', LOG_INFO, "SYMLINK : Deduplicating on inode %d", check_inode);
-				tagsistant_querytree_traverse(to_qtree, tagsistant_sql_tag_object, check_inode);
-				goto TAGSISTANT_EXIT_OPERATION;
-
-			} else {
-
-				// 2.1. create a new symlink
-				dbg('F', LOG_INFO, "SYMLINK : Creating %s", to_qtree->object_path);
-				res = tagsistant_force_create_and_tag_object(to_qtree, &tagsistant_errno);
-				if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
-
-				// 2.2. save the target path for future checks
 				tagsistant_query(
-					"update objects set symlink = '%s' where inode = %d",
+					"select inode from rds "
+						"where id = \"%s\" and objectname = \"%s\"",
+						to_qtree->dbi,
+						tagsistant_return_integer,
+						&check_inode,
+						rds_id,
+						to_qtree->object_path);
+
+				if (check_inode) {
+					// 2. check if it's a symlink
+					gchar *symlink_target;
+
+					tagsistant_query(
+						"select symlink from objects "
+							"where objectname = \"%s\" and inode = %d",
+							to_qtree->dbi,
+							tagsistant_return_string,
+							&symlink_target,
+							to_qtree->object_path,
+							check_inode);
+
+					if (strlen(symlink_target)) {
+						// it's a symlink
+						if (strcmp(symlink_target, from) == 0) {
+							// 2.1. tag the available symlink with the new tag set
+							dbg('F', LOG_INFO, "SYMLINK : Deduplicating on inode %d", check_inode);
+							tagsistant_querytree_traverse(to_qtree, tagsistant_sql_tag_object, check_inode);
+							goto TAGSISTANT_EXIT_OPERATION;
+						} else {
+							// 2. create the object
+							res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
+							if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+						}
+					} else {
+						// 2. create the object
+						res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
+						if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+					}
+				} else {
+					// 2. create the object
+					res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
+					if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+				}
+			} else {
+				// 1. check if a symlink pointing to "from" path is already in the DB
+				tagsistant_query(
+					"select inode from objects where symlink = '%s'",
 					to_qtree->dbi,
-					NULL, NULL,
-					from, to_qtree->inode);
+					tagsistant_return_integer,
+					&check_inode,
+					from);
+
+				if (check_inode) {
+
+					// 2.1. tag the available symlink with the new tag set
+					dbg('F', LOG_INFO, "SYMLINK : Deduplicating on inode %d", check_inode);
+					tagsistant_querytree_traverse(to_qtree, tagsistant_sql_tag_object, check_inode);
+					goto TAGSISTANT_EXIT_OPERATION;
+
+				} else {
+
+					// 2.1. create a new symlink
+					res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
+					if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+				}
 			}
 
 			// clean the RDS library

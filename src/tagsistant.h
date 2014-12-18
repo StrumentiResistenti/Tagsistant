@@ -357,3 +357,4 @@ extern void tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer 
 extern void tagsistant_delete_rds_involved(tagsistant_querytree *qtree);
 extern gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree);
 extern gchar *tagsistant_get_rds_id(tagsistant_querytree *qtree, int *materialized);
+extern gchar *tagsistant_get_rds_checksum(tagsistant_querytree *qtree);
