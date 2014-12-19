@@ -3,3 +3,7 @@
 *.lo
 */.libs/*
 *.la
+Makefile.int
+aclocal.m4
+configure
+libtool
