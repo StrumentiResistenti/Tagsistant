@@ -143,7 +143,7 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"    -f                       run in foreground\n"
 		"    -s                       run single threaded\n"
 		"    --open-permission, -P    relax metadirectories permissions to 0777 \n"
-		"    --multi-symlink, -m      create multiple symlink with the same name if"
+		"    --multi-symlink, -m      create multiple symlink with the same name if\n"
 		"                               their targets differ \n"
 		"    --tags-suffix=string     set the string to be appended to list a path tags \n"
 		"                             (default .tags)\n"
