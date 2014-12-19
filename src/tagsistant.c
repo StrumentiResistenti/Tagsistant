@@ -146,7 +146,7 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"    --multi-symlink, -m      create multiple symlink with the same name if\n"
 		"                               their targets differ \n"
 		"    --tags-suffix=string     set the string to be appended to list a path tags \n"
-		"                             (default .tags)\n"
+		"                               (defaults to .tags)\n"
 		"    --show-config, -p        print the content of the repository.ini file\n"
 		"    --namespace-suffix, -n   the namespace suffix (defaults to ':')\n"
 #if HAVE_SYS_XATTR_H
