@@ -1,14 +1,16 @@
-*.Po
-*.o
+*/.dirstamp
 *.lo
-*/.libs/*
+*.o
 *.la
+<<<<<<< HEAD
 Makefile.int
 aclocal.m4
 configure
 libtool
 */.dirstamp
 aclocal.m4
+=======
+>>>>>>> fe31f5c9e57d7958181e3421bf78b2035b6ef9bd
 ar-lib
 autom4te.cache
 compile

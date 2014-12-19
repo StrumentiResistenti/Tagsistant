@@ -210,6 +210,7 @@ static GOptionEntry tagsistant_options[] =
   { "open-permission", 'P', 0,	G_OPTION_ARG_NONE,				&tagsistant.open_permission,	"Set relaxed permission in multiuser environments", NULL },
   { "namespace-suffix", 'n', 0, G_OPTION_ARG_STRING,			&tagsistant.namespace_suffix,	"The namespace suffix (defaults to ':')", NULL },
   { "fuse-opt", 'o', 0, 		G_OPTION_ARG_STRING_ARRAY, 		&tagsistant.fuse_opts, 			"Pass options to FUSE", "allow_other, allow_root, ..." },
+  { "multi-symlink", 'm', 0,	G_OPTION_ARG_NONE,				&tagsistant.multi_symlink,		"Allow multiple symlink with the same name but different targets", NULL },
 #if HAVE_SYS_XATTR_H
   { "enable-xattr", 'x', 0,		G_OPTION_ARG_NONE,				&tagsistant.enable_xattr,		"Enable extended attribute support (required for POSIX ACL)", NULL },
 #endif

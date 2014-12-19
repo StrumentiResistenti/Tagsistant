@@ -126,6 +126,12 @@ void tagsistant_query_add_and_set(GString *statement, qtree_and_node *and_set)
 	}
 }
 
+/*
+ * Return the query portion up to the delimiter token
+ *
+ * @param qtree the tagsistant_querytree object
+ * @return a string containing the query up to the delimiter token
+ */
 gchar *tagsistant_rds_path(tagsistant_querytree *qtree)
 {
 	gchar *path = g_strdup(qtree->expanded_full_path);
@@ -135,47 +141,62 @@ gchar *tagsistant_rds_path(tagsistant_querytree *qtree)
 }
 
 /*
- * Lookup the id of the RDS of a query.
+ * Compute the checksum identifying a RDS
  *
- * @param query the query that generates the RDS
- * @return the RDS id
+ * @param qtree the tagsistant_querytree object
+ * @return a string containing the checksum
  */
-int tagsistant_get_rds_id(tagsistant_querytree *qtree)
+gchar *tagsistant_get_rds_checksum(tagsistant_querytree *qtree)
 {
-	int id = 0;
-
 	/*
 	 * Extract the path to be looked up
 	 */
 	gchar *path = tagsistant_rds_path(qtree);
 
 	/*
-	 * Lookup the id, if the RDS was previously created
+	 * compute the checksum
 	 */
-	tagsistant_query(
-		"select id from rds_index where query = \"%s\"",
-		qtree->dbi, tagsistant_return_integer, &id, path);
+	gchar *checksum = g_compute_checksum_for_string(G_CHECKSUM_MD5, path, -1);
 
 	g_free(path);
-
-	return (id);
+	return (checksum);
 }
 
 /*
- * Save a source tag in the RDS source table
+ * Lookup the id of the RDS of a query.
  *
- * @param node the source tag
- * @param rds_id the RDS id
- * @param dbi a DBI connection
+ * @param query the query that generates the RDS
+ * @param materialized set to one if the RDS exists
+ * @return the RDS id
  */
-void
-tagsistant_register_rds_source(qtree_and_node *node, int rds_id, dbi_conn dbi)
+gchar *tagsistant_get_rds_id(tagsistant_querytree *qtree, int *materialized)
 {
-	gchar *tag = (node->tag && strlen(node->tag)) ? node->tag : node->namespace;
+	/*
+	 * compute the checksum
+	 */
+	gchar *checksum = tagsistant_get_rds_checksum(qtree);
 
+	/*
+	 * check if the RDS has been materialized
+	 */
 	tagsistant_query(
-		"insert into rds_tags (id, tag) values (%d, \"%s\")",
-		dbi, NULL, NULL, rds_id, tag);
+		"select 1 from rds where id = \"%s\" and reasoned = %d limit 1",
+		qtree->dbi, tagsistant_return_integer, materialized, checksum, qtree->do_reasoning);
+
+	return (checksum);
+}
+
+/*
+ * Append a tag to a sources GString
+ *
+ * @param sources a GString object containing the source string
+ * @param and a qtree_and_node to be added to the source string
+ */
+void tagsistant_register_rds_source(GString *sources, qtree_and_node *and)
+{
+	gchar *tag = (and->namespace && strlen(and->namespace)) ? and->namespace : and->tag;
+	g_string_append(sources, tag);
+	g_string_append(sources, "|");
 }
 
 /*
@@ -184,25 +205,10 @@ tagsistant_register_rds_source(qtree_and_node *node, int rds_id, dbi_conn dbi)
  * @param query the query that generates the RDS
  * @return the RDS id
  */
-int tagsistant_create_rds(tagsistant_querytree *qtree)
+gchar *tagsistant_compute_rds_sources(tagsistant_querytree *qtree)
 {
-	int id = 0;
-
-	/*
-	 * Extract the path to be looked up
-	 */
-	gchar *path = tagsistant_rds_path(qtree);
-
-	/*
-	 * Create a new entry and fetch the last insert id
-	 */
-	tagsistant_query(
-		"insert into rds_index (query) values (\"%s\")",
-		qtree->dbi, NULL, NULL, path);
-
-	id = tagsistant_last_insert_id(qtree->dbi);
-
-	g_free(path);
+	GString *sources = g_string_sized_new(64000);
+	g_string_append(sources, "|");
 
 	/*
 	 * For every subquery, save the source tags
@@ -215,14 +221,14 @@ int tagsistant_create_rds(tagsistant_querytree *qtree)
 		qtree_and_node *and = query->and_set;
 
 		while (and) {
-			tagsistant_register_rds_source(and, id, qtree->dbi);
+			tagsistant_register_rds_source(sources, and);
 
 			/*
 			 * ... and every related tag ...
 			 */
 			qtree_and_node *related = and->related;
 			while (related) {
-				tagsistant_register_rds_source(related, id, qtree->dbi);
+				tagsistant_register_rds_source(sources, related);
 				related = related->related;
 			}
 
@@ -231,7 +237,7 @@ int tagsistant_create_rds(tagsistant_querytree *qtree)
 			 */
 			qtree_and_node *negated = and->negated;
 			while (negated) {
-				tagsistant_register_rds_source(negated, id, qtree->dbi);
+				tagsistant_register_rds_source(sources, negated);
 				negated = negated->negated;
 			}
 
@@ -240,24 +246,30 @@ int tagsistant_create_rds(tagsistant_querytree *qtree)
 		query = query->next;
 	}
 
-	return (id);
+	/*
+	 * Free the GString object and return the sources string
+	 */
+	gchar *source_string = sources->str;
+	g_string_free(sources, FALSE);
+
+	return (source_string);
 }
 
 /*
  * Materialize the RDS of a query
  *
  * @param qtree the querytree object
+ * @return the RDS checksum id
  */
-int tagsistant_materialize_rds(tagsistant_querytree *qtree)
+gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 {
-	qtree_or_node *query = qtree->tree;
-
 	/*
 	 * PHASE 1.
 	 * Build a set of temporary tables containing all the matched objects
 	 *
 	 * Step 1.1. for each qtree_or_node build a temporary table
 	 */
+	qtree_or_node *query = qtree->tree;
 	while (query) {
 		GString *create_base_table = g_string_sized_new(51200);
 		g_string_append_printf(create_base_table,
@@ -386,7 +398,8 @@ int tagsistant_materialize_rds(tagsistant_querytree *qtree)
 	 *
 	 * Create a new RDS
 	 */
-	int rds_id = tagsistant_create_rds(qtree);
+	gchar *checksum = tagsistant_get_rds_checksum(qtree);
+	gchar *sources = tagsistant_compute_rds_sources(qtree);
 
 	/*
 	 * format the main statement which reads from the temporary
@@ -397,7 +410,10 @@ int tagsistant_materialize_rds(tagsistant_querytree *qtree)
 	query = qtree->tree;
 
 	while (query) {
-		g_string_append_printf(view_statement, "select %d, inode, objectname from tv%.16" PRIxPTR, rds_id, (uintptr_t) query);
+		g_string_append_printf(view_statement,
+			"select \"%s\", %d, inode, objectname, \"%s\" from tv%.16" PRIxPTR,
+			checksum, qtree->do_reasoning, sources, (uintptr_t) query);
+
 		if (query->next) g_string_append(view_statement, " union ");
 		query = query->next;
 	}
@@ -410,9 +426,10 @@ int tagsistant_materialize_rds(tagsistant_querytree *qtree)
 		qtree->dbi, NULL, NULL, view_statement->str);
 
 	/*
-	 * free the SQL statement
+	 * free the SQL statement and any other intermediate string
 	 */
 	g_string_free(view_statement, TRUE);
+	g_free(sources);
 
 	/*
 	 * PHASE 3.
@@ -425,7 +442,7 @@ int tagsistant_materialize_rds(tagsistant_querytree *qtree)
 		query = query->next;
 	}
 
-	return (rds_id);
+	return (checksum);
 }
 
 /**
@@ -479,35 +496,23 @@ GHashTable *tagsistant_rds_new(tagsistant_querytree *qtree, int is_all_path)
 	/*
 	 * Get the RDS id
 	 */
-	int rds_id = tagsistant_get_rds_id(qtree);
+	int materialized = 0;
+	gchar *rds_id = tagsistant_get_rds_id(qtree, &materialized);
 
 	/*
 	 * If the rds_id is not zero, load the objects from the RDS and return them
 	 */
-	if (rds_id) {
-		GHashTable *file_hash = g_hash_table_new(g_str_hash, g_str_equal);
-
-		tagsistant_query(
-			"select objectname, inode from rds where id = %d",
-			qtree->dbi, tagsistant_add_to_fileset, file_hash, rds_id);
-
-		return (file_hash);
+	if (!materialized) {
+		rds_id = tagsistant_materialize_rds(qtree);
 	}
 
-	/*
-	 * materialize the RDS
-	 */
-	rds_id = tagsistant_materialize_rds(qtree);
-
-	/*
-	 * load the RDS content and return it
-	 */
 	GHashTable *file_hash = g_hash_table_new(g_str_hash, g_str_equal);
-	tagsistant_query(
-		"select objectname, inode from rds where id = %d",
-		qtree->dbi, tagsistant_add_to_fileset, file_hash, rds_id);
 
-	return(file_hash);
+	tagsistant_query(
+		"select objectname, inode from rds where id = \"%s\" and reasoned = %d",
+		qtree->dbi, tagsistant_add_to_fileset, file_hash, rds_id, qtree->do_reasoning);
+
+	return (file_hash);
 }
 
 /**
@@ -524,22 +529,13 @@ void tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data)
 	if (list) g_list_free_full(list, (GDestroyNotify) g_free /* was tagsistant_filetree_destroy_value */);
 }
 
-int tagsistant_delete_rds_by_source_callback(void *data, dbi_result result)
-{
-	(void) data;
-
-	// complete here!
-
-	return (0);
-}
-
 void tagsistant_delete_rds_by_source(qtree_and_node *node, dbi_conn dbi)
 {
 	gchar *tag = (node->tag && strlen(node->tag)) ? node->tag : node->namespace;
 
 	tagsistant_query(
-		"insert into rds_tags (id, tag) values (%d, \"%s\")",
-		dbi, tagsistant_delete_rds_by_source_callback, NULL, tag);
+		"delete from rds where tagset like \"%%|%s|%%\"",
+		dbi, NULL, NULL, tag);
 }
 
 /*
@@ -549,11 +545,13 @@ void tagsistant_delete_rds_by_source(qtree_and_node *node, dbi_conn dbi)
  */
 void tagsistant_delete_rds_involved(tagsistant_querytree *qtree)
 {
+#if 0
 	tagsistant_query("delete from rds", qtree->dbi, NULL, NULL);
 	tagsistant_query("delete from rds_index", qtree->dbi, NULL, NULL);
 	tagsistant_query("delete from rds_tags", qtree->dbi, NULL, NULL);
 
 	return;
+#endif
 
 	/*
 	 * For every subquery, save the source tags
@@ -561,7 +559,7 @@ void tagsistant_delete_rds_involved(tagsistant_querytree *qtree)
 	qtree_or_node *query = qtree->tree;
 	while (query) {
 		/*
-		 * Register every tag...
+		 * Delete every tag...
 		 */
 		qtree_and_node *and = query->and_set;
 

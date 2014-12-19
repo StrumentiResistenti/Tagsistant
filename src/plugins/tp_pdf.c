@@ -1,6 +1,6 @@
 /*
    Tagsistant (tagfs) -- tp_pdf.c
-   Copyright (C) 2006-2013 Tx0 <tx0@strumentiresistenti.org>
+   Copyright (C) 2006-2014 Tx0 <tx0@strumentiresistenti.org>
 
    Tagsistant PDF plugin which makes decisions on file MIME types.
 

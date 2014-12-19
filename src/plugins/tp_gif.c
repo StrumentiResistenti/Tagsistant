@@ -1,6 +1,6 @@
 /*
    Tagsistant (tagfs) -- tp_gif.c
-   Copyright (C) 2006-2013 Tx0 <tx0@strumentiresistenti.org>
+   Copyright (C) 2006-2014 Tx0 <tx0@strumentiresistenti.org>
 
    Tagsistant gif plugin which makes decisions on file MIME types.
 
