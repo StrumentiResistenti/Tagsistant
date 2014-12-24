@@ -44,3 +44,13 @@ And if a file is copied inside Tagsistant twice, Tagsistant is able
 to pair the second copy with the first one, keeping it just one.
 
 More information is available at: http://www.tagsistant.net/howto
+
+To compile Tagsistant, clone this repo and do:
+
+$ ./autogen.sh
+$ ./configure
+$ make
+
+To install Tagsistant, do:
+
+$ make install
