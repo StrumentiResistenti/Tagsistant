@@ -484,7 +484,7 @@ void tagsistant_create_schema()
 					"reasoned integer not null, "
 					"inode integer not null, "
 					"objectname text(255) not null, "
-					"tagset text not null)",
+					"tagset text not null) ENGINE = MEMORY",
 				dbi, NULL, NULL);
 
 			tagsistant_query("create index relations_index on relations (tag1_id, tag2_id)", dbi, NULL, NULL);
