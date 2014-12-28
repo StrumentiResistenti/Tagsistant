@@ -410,9 +410,23 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 	query = qtree->tree;
 
 	while (query) {
-		g_string_append_printf(view_statement,
-			"select \"%s\", %d, inode, objectname, \"%s\" from tv%.16" PRIxPTR,
-			checksum, qtree->do_reasoning, sources, (uintptr_t) query);
+		switch (tagsistant.sql_database_driver) {
+			case TAGSISTANT_DBI_SQLITE_BACKEND:
+				g_string_append_printf(view_statement,
+					"select \"%s\", %d, inode, objectname, \"%s\", datetime(\"now\") from tv%.16" PRIxPTR,
+					checksum, qtree->do_reasoning, sources, (uintptr_t) query);
+				break;
+			case TAGSISTANT_DBI_MYSQL_BACKEND:
+				g_string_append_printf(view_statement,
+					"select \"%s\", %d, inode, objectname, \"%s\", now() from tv%.16" PRIxPTR,
+					checksum, qtree->do_reasoning, sources, (uintptr_t) query);
+				break;
+			default:
+				g_string_append_printf(view_statement,
+					"select \"%s\", %d, inode, objectname, \"%s\", \"\" from tv%.16" PRIxPTR,
+					checksum, qtree->do_reasoning, sources, (uintptr_t) query);
+				break;
+		}
 
 		if (query->next) g_string_append(view_statement, " union ");
 		query = query->next;

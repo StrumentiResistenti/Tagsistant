@@ -427,7 +427,8 @@ void tagsistant_create_schema()
 					"reasoned integer not null, "
 					"inode integer not null, "
 					"objectname text(255) not null, "
-					"tagset text not null)",
+					"tagset text not null, "
+					"creation datetime not null default CURRENT_DATE)",
 				dbi, NULL, NULL);
 
 			tagsistant_query("create index if not exists relations_index on relations (tag1_id, tag2_id)", dbi, NULL, NULL);
@@ -436,6 +437,8 @@ void tagsistant_create_schema()
 			tagsistant_query("create index if not exists checksum_index on objects (checksum, inode)", dbi, NULL, NULL);
 			tagsistant_query("create index if not exists relations_type_index on relations (relation)", dbi, NULL, NULL);
 			tagsistant_query("create index if not exists aliases_index on aliases (alias)", dbi, NULL, NULL);
+			tagsistant_query("create index if not exists rds_index1 on rds (id, reasoned, objectname, inode)", dbi, NULL, NULL);
+			tagsistant_query("create index if not exists rds_index2 on rds (id, reasoned, inode, objectname)", dbi, NULL, NULL);
 			break;
 
 		case TAGSISTANT_DBI_MYSQL_BACKEND:
@@ -484,7 +487,8 @@ void tagsistant_create_schema()
 					"reasoned integer not null, "
 					"inode integer not null, "
 					"objectname text(255) not null, "
-					"tagset text not null) ENGINE = MEMORY",
+					"tagset text not null, "
+					"creation datetime not null) ENGINE = MEMORY",
 				dbi, NULL, NULL);
 
 			tagsistant_query("create index relations_index on relations (tag1_id, tag2_id)", dbi, NULL, NULL);
@@ -493,6 +497,8 @@ void tagsistant_create_schema()
 			tagsistant_query("create index checksum_index on objects (checksum, inode)", dbi, NULL, NULL);
 			tagsistant_query("create index relations_type_index on relations (relation)", dbi, NULL, NULL);
 			tagsistant_query("create index aliases_index on aliases (alias)", dbi, NULL, NULL);
+			tagsistant_query("create index rds_index1 on rds (id, reasoned, objectname, inode)", dbi, NULL, NULL);
+			tagsistant_query("create index rds_index2 on rds (id, reasoned, inode, objectname)", dbi, NULL, NULL);
 			break;
 
 		default:
