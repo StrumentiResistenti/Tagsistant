@@ -22,10 +22,13 @@
 /*
 sample config:
 [filename]
-filter=(1080p|720p|\d{4}|ENG|DL|HD)
-simple=1080p,720p,ENG,DL,HD
+filter=\.(DIRECTORSCUT|EXTENDED|UNCUT|1080p|720p|\d{4}|CUT|ENG|FR|DL|HD)
+simple=DIRECTORSCUT,EXTENDED,UNCUT,1080p,720p,CUT,ENG,FR,DL,HD
 machine=time:year:\d{4}
 splitter=,
+
+sample filename:
+Stargate.DIRECTORSCUT.1080p.DL.1994.mkv
  */
 
 #include "../tagsistant.h"
