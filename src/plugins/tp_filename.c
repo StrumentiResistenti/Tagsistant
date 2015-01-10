@@ -20,6 +20,7 @@
 */
 
 /*
+ *** README ***
 sample config:
 [filename]
 filter=\.(DIRECTORSCUT|EXTENDED|UNCUT|1080p|720p|\d{4}|CUT|ENG|FR|DL|HD)
@@ -29,13 +30,19 @@ splitter=,
 
 sample filename:
 Stargate.DIRECTORSCUT.1080p.DL.1994.mkv
+
+NOTES: - The desired tags have to be in the first capturing group of the regexp
+         defined by the "filter" config option!
+       - There shouldn´t be any ambiguities of the defined tags/regexp or there most certainly will be wrong tags!
+       - The "\." in the filter-line in this example is used to prevent tagging
+         movie names with 4 digit-numbers as year (of course this requires that no movie name contains a dot).
  */
 
 #include "../tagsistant.h"
 
 typedef struct machine_tag {
 	struct machine_tag *next;
-	gchar **tags;
+	gchar **tags; // only used to free the memory on exit
 	gchar *namespace;
 	gchar *keyword;
 	GRegex *rx;
@@ -66,7 +73,7 @@ int tagsistant_plugin_init()
 	gchar *machine = tagsistant_get_ini_entry("filename", "machine");
 	gchar *splitter = tagsistant_get_ini_entry("filename", "splitter");
 
-	/* default splitter */
+	/* set default tag-splitter if not configured*/
 	if (!splitter || g_strcmp0(splitter, "") == 0) {
 		if(g_strcmp0(splitter, "") == 0) {
 			g_free(splitter);
@@ -75,17 +82,19 @@ int tagsistant_plugin_init()
 		splitter_free = FALSE;
 	}
 
+	/* determine if there are simple tags configured */
 	if (!simple || g_strcmp0(simple, "") == 0) {
 		simple_active = FALSE;
 	}
 
+	/* determine if there are machine tags configured */
 	if (!machine || g_strcmp0(machine, "") == 0) {
 		machine_active = FALSE;
 	}
 
 	/* disable plugin if there are two few settings for it */
 	if (!pattern || (g_strcmp0(pattern, "") == 0) || (!simple_active && !machine_active)) {
-		dbg('p', LOG_INFO, "filename: disabled");
+		dbg('p', LOG_INFO, "filename-plugin: disabled");
 
 		if (splitter_free) {
 			g_free(splitter);
@@ -102,7 +111,7 @@ int tagsistant_plugin_init()
 
 	/* disable plugin on regex error */
 	if (err != NULL) {
-		dbg('p', LOG_ERR, "filename: %s", err->message);
+		dbg('p', LOG_ERR, "filename-plugin: %s", err->message);
 		g_error_free(err);
 		g_regex_unref(rx);
 		if (splitter_free) {
@@ -122,20 +131,22 @@ int tagsistant_plugin_init()
 	if(machine_active) {
 		gchar **split_m_tags = g_strsplit(machine, splitter, 0);
 		int i = 0;
-		while(split_m_tags[i] != NULL) { // store the machine tag components in an easy access struct
+		while(split_m_tags[i] != NULL) {
 			if(g_strcmp0(split_m_tags[i], "") == 0) { // FIXME: check for more syntax errors in split_m_tags[i]
 				continue;
 			}
+			/* store the machine tag components in an easy access struct */
 			machine_tags_current = g_new(machine_tag, 1);
 			if(machine_tags_begin == NULL) {
-				machine_tags_begin = machine_tags_current; // initialize machine_tags_begin
+				machine_tags_begin = machine_tags_current; // initialize beginning of the machine_tags list
 			}
 			machine_tags_current->tags = g_strsplit(split_m_tags[i], m_splitter, 0);
 			machine_tags_current->namespace = machine_tags_current->tags[0];
 			machine_tags_current->keyword = machine_tags_current->tags[1];
 			machine_tags_current->rx = g_regex_new(machine_tags_current->tags[2], TAGSISTANT_RX_COMPILE_FLAGS, 0, &err);
+			/* if there is an error in the tags regexp the tag is ignored */
 			if (err != NULL) {
-				dbg('p', LOG_ERR, "filename: machine-tag: %s", err->message);
+				dbg('p', LOG_ERR, "filename-plugin: machine-tag: %s", err->message);
 				g_error_free(err);
 				g_regex_unref(machine_tags_current->rx);
 				machine_tags_current->rx = NULL;
@@ -160,30 +171,35 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 {
 	gchar *filename = g_strdup(qtree->object_path);
 	GMatchInfo *match_info;
+	/* match the filename against all possible tags defined by the filter config option */
 	g_regex_match(rx, filename, 0, &match_info);
-	gboolean is_simple = FALSE;
 
+	/* if no tag was found in the filename, no further processing is done */
 	if(!g_match_info_matches(match_info)) {
 		g_match_info_free(match_info);
 		return(TP_NULL);
 	}
 
+	/* check which tags the filename contains, do the tagging and remove the found tag from the filename-string
+	 * until there are no more tags in the filename-string */
 	do {
 		gchar *match = g_match_info_fetch(match_info, 1);
+
+		/* iterate over the "simple tags" defined in the config and see if the match from the regexp equals
+		 * one of them */
 		if(simple_active) {
-			is_simple = FALSE;
 			simple_tags_current = simple_tags_begin;
 			while((*simple_tags_current) != NULL) {
 				if(g_strcmp0(*simple_tags_current, match) == 0) {
 					tagsistant_sql_tag_object(qtree->dbi, match, NULL, NULL, qtree->inode);
-					is_simple = TRUE;
 					break;
 				}
 				simple_tags_current++;
 			}
-
 		}
-		if(machine_active && !is_simple) {
+
+		/* iterate over the "machine tags" defined in the config and see if their regexp matches the current match. */
+		if(machine_active) {
 			GMatchInfo *machine_match_info;
 			machine_tags_current = machine_tags_begin;
 			while(machine_tags_current != NULL) {
@@ -202,7 +218,8 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 				machine_tags_current = machine_tags_current->next;
 			}
 		}
-		// remove matched tag from filename
+
+		/* remove matched tag from filename-string */
 		gchar *filename_search = g_strrstr(filename, match);
 		gchar *filename_temp = g_strndup(filename, strlen(filename) - strlen(match));
 		int pos = (int)(filename_search - filename);
@@ -214,6 +231,7 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 		g_free(filename);
 		filename = filename_temp;
 
+		/* free the match and see if there are more matches in the remaining filename */
 		g_free(match);
 		g_match_info_free(match_info);
 
@@ -228,11 +246,12 @@ void tagsistant_plugin_free()
 {
 	g_regex_unref(rx);
 
+	/* free the simple_tags list */
 	if(simple_active) {
 		g_strfreev(simple_tags_begin);
 	}
 
-	/* free the machine_tags array */
+	/* free the machine_tags list */
 	if(machine_active) {
 		machine_tags_current = machine_tags_begin;
 		machine_tag *m_tags_temp = machine_tags_begin;
