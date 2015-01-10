@@ -158,6 +158,8 @@ int tagsistant_plugin_init()
 /* exported processor function */
 int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
 {
+	(void) keywords;
+
 	gchar *filename = g_strdup(qtree->object_path);
 	GMatchInfo *match_info;
 	g_regex_match(rx, filename, 0, &match_info);

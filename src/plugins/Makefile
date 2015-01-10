@@ -32,8 +32,8 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-build_triplet = i686-pc-linux-gnu
-host_triplet = i686-pc-linux-gnu
+build_triplet = x86_64-unknown-linux-gnu
+host_triplet = x86_64-unknown-linux-gnu
 subdir = src/plugins
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -73,6 +73,24 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(libdir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
+libtagsistant_filename_0_1_la_LIBADD =
+am_libtagsistant_filename_0_1_la_OBJECTS =  \
+	libtagsistant_filename_0_1_la-tp_filename.lo
+libtagsistant_filename_0_1_la_OBJECTS =  \
+	$(am_libtagsistant_filename_0_1_la_OBJECTS)
+libtagsistant_filename_0_1_la_LINK = $(LIBTOOL) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(libtagsistant_filename_0_1_la_CFLAGS) $(CFLAGS) \
+	$(libtagsistant_filename_0_1_la_LDFLAGS) $(LDFLAGS) -o $@
+libtagsistant_filename_rx_0_1_la_LIBADD =
+am_libtagsistant_filename_rx_0_1_la_OBJECTS =  \
+	libtagsistant_filename_rx_0_1_la-tp_filename_rx.lo
+libtagsistant_filename_rx_0_1_la_OBJECTS =  \
+	$(am_libtagsistant_filename_rx_0_1_la_OBJECTS)
+libtagsistant_filename_rx_0_1_la_LINK = $(LIBTOOL) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(libtagsistant_filename_rx_0_1_la_CFLAGS) $(CFLAGS) \
+	$(libtagsistant_filename_rx_0_1_la_LDFLAGS) $(LDFLAGS) -o $@
 libtagsistant_generic_0_1_la_LIBADD =
 am_libtagsistant_generic_0_1_la_OBJECTS =  \
 	libtagsistant_generic_0_1_la-tp_generic.lo
@@ -176,7 +194,9 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libtagsistant_generic_0_1_la_SOURCES) \
+SOURCES = $(libtagsistant_filename_0_1_la_SOURCES) \
+	$(libtagsistant_filename_rx_0_1_la_SOURCES) \
+	$(libtagsistant_generic_0_1_la_SOURCES) \
 	$(libtagsistant_gif_0_1_la_SOURCES) \
 	$(libtagsistant_html_0_1_la_SOURCES) \
 	$(libtagsistant_jpeg_0_1_la_SOURCES) \
@@ -186,7 +206,9 @@ SOURCES = $(libtagsistant_generic_0_1_la_SOURCES) \
 	$(libtagsistant_photo_0_1_la_SOURCES) \
 	$(libtagsistant_png_0_1_la_SOURCES) \
 	$(libtagsistant_xml_0_1_la_SOURCES)
-DIST_SOURCES = $(libtagsistant_generic_0_1_la_SOURCES) \
+DIST_SOURCES = $(libtagsistant_filename_0_1_la_SOURCES) \
+	$(libtagsistant_filename_rx_0_1_la_SOURCES) \
+	$(libtagsistant_generic_0_1_la_SOURCES) \
 	$(libtagsistant_gif_0_1_la_SOURCES) \
 	$(libtagsistant_html_0_1_la_SOURCES) \
 	$(libtagsistant_jpeg_0_1_la_SOURCES) \
@@ -199,12 +221,12 @@ DIST_SOURCES = $(libtagsistant_generic_0_1_la_SOURCES) \
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} /home/andrea/workspace/c/tagsistant-0.8.2/missing --run aclocal-1.11
+ACLOCAL = ${SHELL} /home/tx0/workspace/c/tagsistant-0.8.2/missing --run aclocal-1.11
 AMTAR = $${TAR-tar}
 AR = ar
-AUTOCONF = ${SHELL} /home/andrea/workspace/c/tagsistant-0.8.2/missing --run autoconf
-AUTOHEADER = ${SHELL} /home/andrea/workspace/c/tagsistant-0.8.2/missing --run autoheader
-AUTOMAKE = ${SHELL} /home/andrea/workspace/c/tagsistant-0.8.2/missing --run automake-1.11
+AUTOCONF = ${SHELL} /home/tx0/workspace/c/tagsistant-0.8.2/missing --run autoconf
+AUTOHEADER = ${SHELL} /home/tx0/workspace/c/tagsistant-0.8.2/missing --run autoheader
+AUTOMAKE = ${SHELL} /home/tx0/workspace/c/tagsistant-0.8.2/missing --run automake-1.11
 AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
@@ -229,7 +251,7 @@ INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
-LD = /usr/bin/ld
+LD = /usr/bin/ld -m elf_x86_64
 LDFLAGS = 
 LIBOBJS = 
 LIBS = -ldbi -lfuse -lgthread-2.0 
@@ -237,7 +259,7 @@ LIBTOOL = $(SHELL) $(top_builddir)/libtool
 LIPO = 
 LN_S = ln -s
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /home/andrea/workspace/c/tagsistant-0.8.2/missing --run makeinfo
+MAKEINFO = ${SHELL} /home/tx0/workspace/c/tagsistant-0.8.2/missing --run makeinfo
 MANIFEST_TOOL = :
 MKDIR_P = /bin/mkdir -p
 NM = /usr/bin/nm -B
@@ -260,10 +282,10 @@ SET_MAKE =
 SHELL = /bin/bash
 STRIP = strip
 VERSION = 0.8.1
-abs_builddir = /home/andrea/workspace/c/tagsistant-0.8.2/src/plugins
-abs_srcdir = /home/andrea/workspace/c/tagsistant-0.8.2/src/plugins
-abs_top_builddir = /home/andrea/workspace/c/tagsistant-0.8.2
-abs_top_srcdir = /home/andrea/workspace/c/tagsistant-0.8.2
+abs_builddir = /home/tx0/workspace/c/tagsistant-0.8.2/src/plugins
+abs_srcdir = /home/tx0/workspace/c/tagsistant-0.8.2/src/plugins
+abs_top_builddir = /home/tx0/workspace/c/tagsistant-0.8.2
+abs_top_srcdir = /home/tx0/workspace/c/tagsistant-0.8.2
 ac_ct_AR = ar
 ac_ct_CC = gcc
 ac_ct_DUMPBIN = 
@@ -273,26 +295,26 @@ am__quote =
 am__tar = $${TAR-tar} chof - "$$tardir"
 am__untar = $${TAR-tar} xf -
 bindir = ${exec_prefix}/bin
-build = i686-pc-linux-gnu
+build = x86_64-unknown-linux-gnu
 build_alias = 
-build_cpu = i686
+build_cpu = x86_64
 build_os = linux-gnu
-build_vendor = pc
+build_vendor = unknown
 builddir = .
 datadir = ${datarootdir}
 datarootdir = ${prefix}/share
 docdir = ${datarootdir}/doc/${PACKAGE_TARNAME}
 dvidir = ${docdir}
 exec_prefix = ${prefix}
-host = i686-pc-linux-gnu
+host = x86_64-unknown-linux-gnu
 host_alias = 
-host_cpu = i686
+host_cpu = x86_64
 host_os = linux-gnu
-host_vendor = pc
+host_vendor = unknown
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/andrea/workspace/c/tagsistant-0.8.2/install-sh
+install_sh = ${SHELL} /home/tx0/workspace/c/tagsistant-0.8.2/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -317,7 +339,8 @@ lib_LTLIBRARIES = libtagsistant_generic-0.1.la \
 	libtagsistant_ogg-0.1.la libtagsistant_mp3-0.1.la \
 	libtagsistant_html-0.1.la libtagsistant_xml-0.1.la \
 	libtagsistant_gif-0.1.la libtagsistant_png-0.1.la \
-	libtagsistant_pdf-0.1.la
+	libtagsistant_pdf-0.1.la libtagsistant_filename-0.1.la \
+	libtagsistant_filename_rx-0.1.la
 libtagsistant_generic_0_1_la_SOURCES = ../tagsistant.h tp_generic.c
 libtagsistant_generic_0_1_la_CFLAGS = `pkg-config --cflags glib-2.0`
 libtagsistant_photo_0_1_la_SOURCES = ../tagsistant.h tp_photo.c
@@ -347,6 +370,12 @@ libtagsistant_png_0_1_la_LDFLAGS = `pkg-config --libs glib-2.0`
 libtagsistant_pdf_0_1_la_SOURCES = ../tagsistant.h tp_pdf.c
 libtagsistant_pdf_0_1_la_CFLAGS = `pkg-config --cflags glib-2.0`
 libtagsistant_pdf_0_1_la_LDFLAGS = `pkg-config --libs glib-2.0`
+libtagsistant_filename_0_1_la_SOURCES = ../tagsistant.h tp_filename.c
+libtagsistant_filename_0_1_la_CFLAGS = `pkg-config --cflags glib-2.0`
+libtagsistant_filename_0_1_la_LDFLAGS = `pkg-config --libs glib-2.0`
+libtagsistant_filename_rx_0_1_la_SOURCES = ../tagsistant.h tp_filename_rx.c
+libtagsistant_filename_rx_0_1_la_CFLAGS = `pkg-config --cflags glib-2.0`
+libtagsistant_filename_rx_0_1_la_LDFLAGS = `pkg-config --libs glib-2.0`
 all: all-am
 
 .SUFFIXES:
@@ -412,6 +441,10 @@ clean-libLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
+libtagsistant_filename-0.1.la: $(libtagsistant_filename_0_1_la_OBJECTS) $(libtagsistant_filename_0_1_la_DEPENDENCIES) $(EXTRA_libtagsistant_filename_0_1_la_DEPENDENCIES) 
+	$(libtagsistant_filename_0_1_la_LINK) -rpath $(libdir) $(libtagsistant_filename_0_1_la_OBJECTS) $(libtagsistant_filename_0_1_la_LIBADD) $(LIBS)
+libtagsistant_filename_rx-0.1.la: $(libtagsistant_filename_rx_0_1_la_OBJECTS) $(libtagsistant_filename_rx_0_1_la_DEPENDENCIES) $(EXTRA_libtagsistant_filename_rx_0_1_la_DEPENDENCIES) 
+	$(libtagsistant_filename_rx_0_1_la_LINK) -rpath $(libdir) $(libtagsistant_filename_rx_0_1_la_OBJECTS) $(libtagsistant_filename_rx_0_1_la_LIBADD) $(LIBS)
 libtagsistant_generic-0.1.la: $(libtagsistant_generic_0_1_la_OBJECTS) $(libtagsistant_generic_0_1_la_DEPENDENCIES) $(EXTRA_libtagsistant_generic_0_1_la_DEPENDENCIES) 
 	$(libtagsistant_generic_0_1_la_LINK) -rpath $(libdir) $(libtagsistant_generic_0_1_la_OBJECTS) $(libtagsistant_generic_0_1_la_LIBADD) $(LIBS)
 libtagsistant_gif-0.1.la: $(libtagsistant_gif_0_1_la_OBJECTS) $(libtagsistant_gif_0_1_la_DEPENDENCIES) $(EXTRA_libtagsistant_gif_0_1_la_DEPENDENCIES) 
@@ -439,6 +472,8 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+include ./$(DEPDIR)/libtagsistant_filename_0_1_la-tp_filename.Plo
+include ./$(DEPDIR)/libtagsistant_filename_rx_0_1_la-tp_filename_rx.Plo
 include ./$(DEPDIR)/libtagsistant_generic_0_1_la-tp_generic.Plo
 include ./$(DEPDIR)/libtagsistant_gif_0_1_la-tp_gif.Plo
 include ./$(DEPDIR)/libtagsistant_html_0_1_la-tp_html.Plo
@@ -473,6 +508,20 @@ include ./$(DEPDIR)/libtagsistant_xml_0_1_la-tp_xml.Plo
 #	source='$<' object='$@' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LTCOMPILE) -c -o $@ $<
+
+libtagsistant_filename_0_1_la-tp_filename.lo: tp_filename.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtagsistant_filename_0_1_la_CFLAGS) $(CFLAGS) -MT libtagsistant_filename_0_1_la-tp_filename.lo -MD -MP -MF $(DEPDIR)/libtagsistant_filename_0_1_la-tp_filename.Tpo -c -o libtagsistant_filename_0_1_la-tp_filename.lo `test -f 'tp_filename.c' || echo '$(srcdir)/'`tp_filename.c
+	$(am__mv) $(DEPDIR)/libtagsistant_filename_0_1_la-tp_filename.Tpo $(DEPDIR)/libtagsistant_filename_0_1_la-tp_filename.Plo
+#	source='tp_filename.c' object='libtagsistant_filename_0_1_la-tp_filename.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtagsistant_filename_0_1_la_CFLAGS) $(CFLAGS) -c -o libtagsistant_filename_0_1_la-tp_filename.lo `test -f 'tp_filename.c' || echo '$(srcdir)/'`tp_filename.c
+
+libtagsistant_filename_rx_0_1_la-tp_filename_rx.lo: tp_filename_rx.c
+	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtagsistant_filename_rx_0_1_la_CFLAGS) $(CFLAGS) -MT libtagsistant_filename_rx_0_1_la-tp_filename_rx.lo -MD -MP -MF $(DEPDIR)/libtagsistant_filename_rx_0_1_la-tp_filename_rx.Tpo -c -o libtagsistant_filename_rx_0_1_la-tp_filename_rx.lo `test -f 'tp_filename_rx.c' || echo '$(srcdir)/'`tp_filename_rx.c
+	$(am__mv) $(DEPDIR)/libtagsistant_filename_rx_0_1_la-tp_filename_rx.Tpo $(DEPDIR)/libtagsistant_filename_rx_0_1_la-tp_filename_rx.Plo
+#	source='tp_filename_rx.c' object='libtagsistant_filename_rx_0_1_la-tp_filename_rx.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtagsistant_filename_rx_0_1_la_CFLAGS) $(CFLAGS) -c -o libtagsistant_filename_rx_0_1_la-tp_filename_rx.lo `test -f 'tp_filename_rx.c' || echo '$(srcdir)/'`tp_filename_rx.c
 
 libtagsistant_generic_0_1_la-tp_generic.lo: tp_generic.c
 	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtagsistant_generic_0_1_la_CFLAGS) $(CFLAGS) -MT libtagsistant_generic_0_1_la-tp_generic.lo -MD -MP -MF $(DEPDIR)/libtagsistant_generic_0_1_la-tp_generic.Tpo -c -o libtagsistant_generic_0_1_la-tp_generic.lo `test -f 'tp_generic.c' || echo '$(srcdir)/'`tp_generic.c

@@ -50,3 +50,8 @@ lib_LTLIBRARIES += libtagsistant_filename-0.1.la
 libtagsistant_filename_0_1_la_SOURCES = ../tagsistant.h tp_filename.c
 libtagsistant_filename_0_1_la_CFLAGS = `pkg-config --cflags glib-2.0`
 libtagsistant_filename_0_1_la_LDFLAGS = `pkg-config --libs glib-2.0`
+
+lib_LTLIBRARIES += libtagsistant_filename_rx-0.1.la
+libtagsistant_filename_rx_0_1_la_SOURCES = ../tagsistant.h tp_filename_rx.c
+libtagsistant_filename_rx_0_1_la_CFLAGS = `pkg-config --cflags glib-2.0`
+libtagsistant_filename_rx_0_1_la_LDFLAGS = `pkg-config --libs glib-2.0`

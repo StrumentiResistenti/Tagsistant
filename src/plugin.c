@@ -136,14 +136,10 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	}
 
 	/*
-	 * If no mime type has been found just return
+	 * If non mime type has been found, set the most generic available:
+	 * application/octet-stream.
 	 */
-	if (!mime_type) {
-		/* lock processor mutex */
-		g_mutex_unlock(&tagsistant_processor_mutex);
-		tagsistant_querytree_destroy(qtree, 1);
-		return(res);
-	}
+	if (!mime_type) mime_type = g_strdup("application/octet-stream");
 
 	/*
 	 * guess the generic MIME type
@@ -287,6 +283,13 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	 */
 	context.qtree = qtree;
 	EXTRACTOR_extract(plist, full_archive_path, NULL, 0, tagsistant_process_callback, (void *) &context);
+
+	/*
+	 * If no mime type has been found, set the most generic available:
+	 * application/octet-stream.
+	 */
+	gchar default_mimetype[] = "application/octet-stream";
+	if (!strlen(context.mime_type)) memcpy(context.mime_type, default_mimetype);
 
 	/*
 	 *  apply plugins starting from the most matching first (like: image/jpeg)
