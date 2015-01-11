@@ -181,7 +181,7 @@ void cleanup(int s)
 }
 
 /**
- * Return and entry from the repository.ini file
+ * Return an entry from the repository.ini file
  *
  * @param section the INI section
  * @param key the INI key
@@ -190,6 +190,27 @@ void cleanup(int s)
 gchar *tagsistant_get_ini_entry(gchar *section, gchar *key) {
 	if (!tagsistant_ini) return (NULL);
 	return (g_key_file_get_value(tagsistant_ini, section, key, NULL));
+}
+
+/**
+ * Return all the values of an entry from the repository.ini file.
+ * Values must be separated by ';'
+ *
+ * @param section the INI section
+ * @param key the INI key
+ * @return the values as an array of strings that must be freed with g_strfreev()
+ */
+gchar **tagsistant_get_ini_entry_list(gchar *section, gchar *key) {
+	if (!tagsistant_ini) return(NULL);
+	gsize values = 0;
+	GError *error = NULL;
+	gchar **result = g_key_file_get_string_list(tagsistant_ini, section, key, &values, &error);
+	if (error) {
+		dbg('b', LOG_ERR, "Error reading %s key from %s group: %s", key, section, error->message);
+		return (NULL);
+	}
+	dbg('b', LOG_INFO, "Key %s of section %s contains %lu values", key, section, values);
+	return (result);
 }
 
 extern void tagsistant_show_config();

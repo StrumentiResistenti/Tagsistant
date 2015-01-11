@@ -332,6 +332,7 @@ extern void tagsistant_fix_archive();
 extern GKeyFile *tagsistant_ini;
 extern void tagsistant_manage_repository_ini();
 extern gchar *tagsistant_get_ini_entry(gchar *section, gchar *key);
+extern gchar **tagsistant_get_ini_entry_list(gchar *section, gchar *key);
 
 extern GHashTable *tagsistant_checksummers;
 extern int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gchar *hex);
