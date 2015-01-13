@@ -27,24 +27,30 @@
  * splitter=.
  *
  * explanation:
- *   splitter is a string used to split the filename in tokens.
- *   On each token will be applied the set of regular expressions
- *   declared by filter
+ *   "splitter" is a string used to split the filename in tokens.
  *
- *   filter is a multiple field separated by ';'. Each of its entries
- *   has the form:
+ *   "filter" is a multiple field separated by ';'. It describes a set
+ *   of rules to be applied on each token created splitting the filename
+ *   by the string declared in splitter. Each rule has the form:
  *
  *     regexp => actions
  *
  *   where 'actions' is a list separated by ',' of actions. Each action
- *   starts by S if it generates a single tag, or by M if generates a
- *   machine tag. The rules in the example mean:
+ *   starts by S to generate a single tag, or by M to generate a
+ *   machine tag. Another way to remember the distinction between S and M
+ *   is thinking S for single tag and M for multiple tag.
+ *
+ *   The "regexp" pattern usually contains one or more pairs of parenthesis
+ *   to delimit the token part to be used in the tags. The first pair of
+ *   parenthesis is recalled by $1, the second by $2 and so on.
+ *
+ *   That said, the rules in the example mean:
  *
  *   (DIRECTORSCUT|EXTENDED|UNCUT|1080p|720p|CUT|ENG|FR|DL|HD) => S:$1;
  *     if the whole token matches one of the alternatives in the regexp,
- *     it turns into a Single tag (the S: at the beginning of the action)
- *     with the matched text (the whole token in this case, represented
- *     by $1).
+ *     tag the file with a Single tag (the S: at the beginning of the action)
+ *     corresponding at the matched text (the whole token in this case,
+ *     represented by $1).
  *
  *   (\d{4}) => M:time:year:$1;
  *     if the token is a string of exactly four digits, apply a multiple
@@ -56,6 +62,18 @@
  *       time:/year/eq/<the first match>
  *       time:/month/eq/<the second match>
  *       time:/day/eq/<the third match>
+ *
+ *   A more sophisticated alternative to the previous rule could be:
+ *
+ *   ((\d{4})-(\d{2})-(\d{2})) => M:time:date:$1; M:time:year:$2, M:time:month:$3, M:time:day:$4;
+ *
+ *   Here the first pair of parenthesis wraps the whole token, while
+ *   the pairs from 2 to 4 only include parts. On a token like
+ *   "2014-11-24", the rule will apply four tags:
+ *       time:/date/eq/2014-11-24/
+ *       time:/year/eq/2014/
+ *       time:/month/eq/11/
+ *       time:/day/eq/24/
  *
  *   The use of M: and S: at the beginning of each action allows an
  *   intermixed use of single an machine tags together.
@@ -76,6 +94,19 @@
  *   (3) time:/year/eq/2012/
  *   (3) time:/month/eq/07/
  *   (3) time:/day/eq/21/
+ * 
+ * The filter syntax can be expressed in BNF as:
+ *
+ *      filter ::= {<rule>;}
+ *        rule ::= <pattern> "=>" <actions>
+ *     pattern ::= "valid regular expression"
+ *     actions ::= {<action>,}
+ *      action ::= <single-tag> | <machine-tag>
+ *  single-tag ::= "S:" {"text" | <placeholder>}
+ * machine-tag ::= "M:" {"text" | <placeholder>} ":" {"text" | <placeholder>} ":" {"text" | <placeholder>}
+ * placeholder ::= "$" <digit>
+ *       digit ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+ *
  */
 
 #include "../tagsistant.h"
@@ -116,7 +147,7 @@ plugin_rule *plugin_rules = NULL;
 /*
  * Define some constant with string splitters
  */
-const gchar rule_splitter[] = ";";
+const gchar rule_splitter[] = "\\s*;\\s*";
 const gchar pattern_actions_splitter[] = "\\s*=>\\s*";
 const gchar action_splitter[] = "\\s*,\\s*";
 
@@ -141,7 +172,9 @@ gchar *splitter = NULL;
  */
 GRegex *value_replacer_rx = NULL;
 
-/* exported init function */
+/*
+ * Initialize the plugin
+ */
 int tagsistant_plugin_init()
 {
 	/* get the config parameters from the .ini file */
@@ -232,8 +265,14 @@ int tagsistant_plugin_init()
 /**
  * A callback called by g_regex_replace_eval() inside apply_rules().
  * Replaces every placeholder ($N) with the corresponding parameter extracted by
+ *
+ * @param info GMatchInfo object to access regexp placeholders
+ * @param result a GString object to fill with the resulting string
+ * @param data a generic pointer that will be casted to a GMatchInfo
+ *   object to access the rule expression placeholders
+ * @return always FALSE
  */
-gboolean apply_rules_callback (const GMatchInfo *info, GString *result, gpointer data)
+gboolean apply_rules_callback(const GMatchInfo *info, GString *result, gpointer data)
 {
 	GMatchInfo *rule_info = (GMatchInfo *) data;
 
@@ -273,6 +312,7 @@ gboolean apply_rules_callback (const GMatchInfo *info, GString *result, gpointer
  * Called on every token, applies all the rules defined by the "filter" ini parameter
  *
  * @param token the token to be matched
+ * @param qtree the tagsistant_querytree object to be tagged if token matches
  */
 void apply_rules(const gchar *token, const tagsistant_querytree *qtree)
 {
@@ -291,24 +331,51 @@ void apply_rules(const gchar *token, const tagsistant_querytree *qtree)
 				 * in the format with corresponding matching values
 				 */
 				GError *err = NULL;
-				gchar *format = g_regex_replace_eval(value_replacer_rx, action->format, -1, 0, 0, apply_rules_callback, (gpointer) info, &err);
+				gchar *format = g_regex_replace_eval(value_replacer_rx, action->format,
+					-1, 0, 0, apply_rules_callback, (gpointer) info, &err);
 
 				/*
 				 * Split the format by ":"
 				 */
 				gchar **format_elements = g_strsplit(format, ":", 4);
+
 				if (strcmp("S", format_elements[0]) == 0) {
+
 					/*
-					 * single tag
+					 * simple tag
 					 */
-					tagsistant_sql_tag_object(qtree->dbi, format_elements[1], NULL, NULL, qtree->inode);
+					if (format_elements[1] && strlen(format_elements[1])) {
+						tagsistant_sql_tag_object(qtree->dbi, format_elements[1], NULL, NULL, qtree->inode);
+					} else {
+						dbg('p', LOG_ERR, "Wrong action %s on rule %s: single tag not defined",
+							action->format, rule->pattern);
+					}
+
 				} else if (strcmp("M", format_elements[0]) == 0) {
+
 					/*
 					 * machine tag
 					 */
-					gchar *namespace = g_strdup_printf("%s:", format_elements[1]);
-					tagsistant_sql_tag_object(qtree->dbi, namespace, format_elements[2], format_elements[3], qtree->inode);
-					g_free(namespace);
+					if (
+						format_elements[1] && strlen(format_elements[1]) &&
+						format_elements[2] && strlen(format_elements[2]) &&
+						format_elements[3] && strlen(format_elements[3])
+					) {
+						gchar *namespace = g_strdup_printf("%s:", format_elements[1]);
+
+						tagsistant_sql_tag_object(
+							qtree->dbi,
+							namespace,
+							format_elements[2],
+							format_elements[3],
+							qtree->inode);
+
+						g_free(namespace);
+					} else {
+						dbg('p', LOG_ERR, "Wrong action %s on rule %s: machine tag wrongly or not defined",
+							action->format, rule->pattern);
+					}
+
 				} else {
 					dbg('p', LOG_ERR, "Wrong action %s on rule %s: unknown tag type %s",
 						action->format, rule->pattern, format_elements[0]);
@@ -324,7 +391,9 @@ void apply_rules(const gchar *token, const tagsistant_querytree *qtree)
 	}
 }
 
-/* exported processor function */
+/*
+ * plugin kernel
+ */
 int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
 {
 	/*
@@ -333,12 +402,12 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 	 */
 	(void) keywords;
 
-	dbg('p', LOG_INFO, "Using tp_filename_rx on %s", qtree->object_path);
-
 	/*
 	 * Do not process if the plugin has not been properly initialized
 	 */
 	if (!plugin_enabled) return (TP_NULL);
+
+	dbg('p', LOG_INFO, "Using tp_filename_rx on %s", qtree->object_path);
 
 	/*
 	 * split the filename into tokens by splitter
@@ -354,12 +423,19 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 		token++;
 	}
 
+	/*
+	 * free the token array
+	 */
 	g_strfreev(tokens);
 
 	return(TP_OK);
 }
 
-/* exported finalize function */
+/* 
+ * Clean and finalize. Mainly for memory leaks hunting, since plugins
+ * are freed only when Tagsistant has been shutdown and their structures
+ * will be destroyed anyway.
+ */
 void tagsistant_plugin_free()
 {
 	g_free_null(pattern);
