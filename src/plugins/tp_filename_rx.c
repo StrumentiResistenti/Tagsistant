@@ -20,63 +20,94 @@
 */
 
 /*
- * sample config:
+ * SAMPLE CONFIG from repository.ini:
  *
  * [filename_rx]
- * filter=(DIRECTORSCUT|EXTENDED|UNCUT|1080p|720p|CUT|ENG|FR|DL|HD) => S:$1; (\d{4}) => M:time:year:$1; (\d{4})-(\d{2})-(\d{2}) => M:time:year:$1, M:time:month:$2, M:time:day:$3;
+ * split=<yes|no|true|false|0|1>
  * splitter=.
+ * filter=(DIRECTORSCUT|EXTENDED|UNCUT|1080p|720p|CUT|ENG|FR|DL|HD) => S:$1; (\d{4}) => M:time:year:$1; (\d{4})-(\d{2})-(\d{2}) => M:time:year:$1, M:time:month:$2, M:time:day:$3;
  *
- * explanation:
+ * EXPLANATION:
+ *
+ *   "split" controls filename splitting. If "yes", "true" or "1", the
+ *   filename is splitted into one or more tokens by "splitter".
+ *   If "no", "false" or "0", no splitting is done and the whole
+ *   filename is used. If omitted, it defaults to 1.
+ *
  *   "splitter" is a string used to split the filename in tokens.
+ *   If omitted, it defaults to "."
  *
- *   "filter" is a multiple field separated by ';'. It describes a set
- *   of rules to be applied on each token created splitting the filename
- *   by the string declared in splitter. Each rule has the form:
+ *   "filter" describes a set of rules separated by ';'. Each rule
+ *   is applied on each token created splitting the filename
+ *   by the string declared in splitter. A rule has the form:
  *
  *     regexp => actions
  *
  *   where 'actions' is a list separated by ',' of actions. Each action
- *   starts by S to generate a single tag, or by M to generate a
+ *   starting by S generates a single tag. A prefix of M generates a
  *   machine tag. Another way to remember the distinction between S and M
  *   is thinking S for single tag and M for multiple tag.
  *
  *   The "regexp" pattern usually contains one or more pairs of parenthesis
- *   to delimit the token part to be used in the tags. The first pair of
- *   parenthesis is recalled by $1, the second by $2 and so on.
+ *   to delimit a part to be used in the tags. The first pair of
+ *   parenthesis can be referred in the actions as $1, the second
+ *   as $2 and so on.
  *
- *   That said, the rules in the example mean:
+ *   That said, the three rules in the example mean:
  *
+ *   (1)
  *   (DIRECTORSCUT|EXTENDED|UNCUT|1080p|720p|CUT|ENG|FR|DL|HD) => S:$1;
+ *
  *     if the whole token matches one of the alternatives in the regexp,
  *     tag the file with a Single tag (the S: at the beginning of the action)
  *     corresponding at the matched text (the whole token in this case,
  *     represented by $1).
  *
+ *   (2)
  *   (\d{4}) => M:time:year:$1;
+ *
  *     if the token is a string of exactly four digits, apply a multiple
  *     tag (the M at the beginning) with namespace 'time', key 'year' and
  *     as value the whole token ($1).
  *
+ *   (3)
  *   (\d{4})-(\d{2})-(\d{2}) => M:time:year:$1, M:time:month:$2, M:time:day:$3;
- *     if the token matches, then produce three multiple tags:
+ *
+ *     if the token matches, then tag the file with three multiple tags:
+ *
  *       time:/year/eq/<the first match>
  *       time:/month/eq/<the second match>
  *       time:/day/eq/<the third match>
  *
- *   A more sophisticated alternative to the previous rule could be:
+ *     A more sophisticated alternative to the previous rule could be:
  *
+ *   (3bis)
  *   ((\d{4})-(\d{2})-(\d{2})) => M:time:date:$1; M:time:year:$2, M:time:month:$3, M:time:day:$4;
  *
- *   Here the first pair of parenthesis wraps the whole token, while
- *   the pairs from 2 to 4 only include parts. On a token like
- *   "2014-11-24", the rule will apply four tags:
+ *     here the first pair of parenthesis wraps the whole token, while
+ *     the pairs from 2 to 4 only include parts. On a token like
+ *     "2014-11-24", the rule will apply four tags:
+ *
  *       time:/date/eq/2014-11-24/
  *       time:/year/eq/2014/
  *       time:/month/eq/11/
  *       time:/day/eq/24/
  *
- *   The use of M: and S: at the beginning of each action allows an
- *   intermixed use of single an machine tags together.
+ * NOTE: By prefixing each action by M: or S:, single and machine tags
+ * can be intermixed in the same action.
+ *
+ * NOTE: The same $N placeholder can be used in more than one action.
+ *
+ * An example to explain both notes:
+ *
+ *   (1080p|720p) => S:res-$1; M:video:resolution:$1;
+ *
+ *     A filename with 720p in its name would receive both:
+ *
+ *       res-720p/
+ *       video:/resolution/eq/720p/
+ *
+ * Some more examples.
  *
  * Example 1: the filename Stargate.DIRECTORSCUT.1080p.DL.1994.mkv
  * would receive the tags:
@@ -167,6 +198,11 @@ gchar *pattern = NULL;
 gchar *splitter = NULL;
 
 /*
+ * Split filenames?
+ */
+int split = 1;
+
+/*
  * This regular expression is used to identify the value place holders inside the
  * rules. A placeholder has the format $N where N is a number between 0 and 9.
  */
@@ -177,9 +213,16 @@ GRegex *value_replacer_rx = NULL;
  */
 int tagsistant_plugin_init()
 {
+	gchar *tmp_split;
+
 	/* get the config parameters from the .ini file */
-	pattern  = tagsistant_get_ini_entry("filename_rx", "filter");
-	splitter = tagsistant_get_ini_entry("filename_rx", "splitter");
+	pattern   = tagsistant_get_ini_entry("filename_rx", "filter");
+	splitter  = tagsistant_get_ini_entry("filename_rx", "splitter");
+	tmp_split = tagsistant_get_ini_entry("filename_rx", "split");
+
+	/* check if filename splitting is requested */
+	if (g_regex_match_simple("^(no|false|0)$", tmp_split, G_REGEX_CASELESS, 0)) split = 0;
+	g_free_null(tmp_split);
 
 	/* return without initializing the plugin */
 	if (!pattern || !strlen(pattern)) return(0);
@@ -410,9 +453,17 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 	dbg('p', LOG_INFO, "Using tp_filename_rx on %s", qtree->object_path);
 
 	/*
-	 * split the filename into tokens by splitter
+	 * Split the filename into tokens by splitter, if requested.
+	 *
+	 * The second call to g_strsplit() uses a patter which is unlikely
+	 * to appear in any filename, and sets the max number of tokens
+	 * to 1. Hence, the remainder of the string after the first token is
+	 * appended to the last token, which is the first again, returning
+	 * the whole filename as a single token.
 	 */
-	gchar **tokens = g_strsplit(qtree->object_path, splitter, 0);
+	gchar **tokens = (split)
+		? g_strsplit(qtree->object_path, splitter, 0)
+		: g_strsplit(qtree->object_path, "/\t\n\r/\t\n\r/\t\n\r", 1);
 
 	/*
 	 * match each rule on each token
@@ -433,7 +484,7 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 
 /* 
  * Clean and finalize. Mainly for memory leaks hunting, since plugins
- * are freed only when Tagsistant has been shutdown and their structures
+ * are freed only when Tagsistant is being shutdown and their structures
  * will be destroyed anyway.
  */
 void tagsistant_plugin_free()
