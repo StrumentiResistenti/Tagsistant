@@ -289,7 +289,7 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	 * application/octet-stream.
 	 */
 	gchar default_mimetype[] = "application/octet-stream";
-	if (!strlen(context.mime_type)) memcpy(context.mime_type, default_mimetype);
+	if (!strlen(context.mime_type)) strcpy(context.mime_type, default_mimetype);
 
 	/*
 	 *  apply plugins starting from the most matching first (like: image/jpeg)
