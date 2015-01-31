@@ -460,6 +460,44 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 }
 
 /**
+ * Deletes the oldest RDS from the rds table
+ *
+ * @param qtree the querytree object used for DBI access
+ */
+void
+tagsistant_rds_delete_oldest(tagsistant_querytree *qtree)
+{
+	int rds_id;
+	tagsistant_query("select min(id) from rds", qtree->dbi, tagsistant_return_integer, &rds_id);
+	dbg('f', LOG_INFO, "Garbage collector: deleting rds %d", rds_id);
+	tagsistant_query("delete from rds where id = %d", qtree->dbi, NULL, NULL, rds_id);
+}
+
+/**
+ * RDS garbage collector
+ *
+ * @param qtree the querytree object used for DBI access
+ */
+void
+tagsistant_rds_garbage_collector(tagsistant_querytree *qtree)
+{
+	int declared_rds = 0;
+	tagsistant_query("select count(distinct id) from rds", qtree->dbi, tagsistant_return_integer, &declared_rds);
+
+	while (declared_rds > TAGSISTANT_GC_RDS) {
+		tagsistant_rds_delete_oldest(qtree);
+		declared_rds--;
+	}
+
+	int stored_tuples = 0;
+	tagsistant_query("select count(*) from rds", qtree->dbi, tagsistant_return_integer, &stored_tuples);
+
+	if (stored_tuples > TAGSISTANT_GC_TUPLES) {
+		tagsistant_rds_delete_oldest(qtree);
+	}
+}
+
+/**
  * build a linked list of filenames that satisfy the querytree
  * object. This is translated in a two phase flow:
  *
@@ -478,6 +516,11 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
  */
 GHashTable *tagsistant_rds_new(tagsistant_querytree *qtree, int is_all_path)
 {
+	/*
+	 * Calls the garbage collector
+	 */
+	tagsistant_rds_garbage_collector(qtree);
+
 	/*
 	 * If the query contains the ALL meta-tag, just select all the available
 	 * objects and return them
@@ -533,6 +576,10 @@ GHashTable *tagsistant_rds_new(tagsistant_querytree *qtree, int is_all_path)
  * Destroy a filetree element GList list of tagsistant_file_handle.
  * This will free the GList data structure by first calling
  * tagsistant_filetree_destroy_value() on each linked node.
+ *
+ * @param key the entry of the GHashTable element to be cleared
+ * @param list the value of the GHashTable element to be cleared which is a GList object
+ * @param data unused
  */
 void tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data)
 {
@@ -552,7 +599,7 @@ void tagsistant_delete_rds_by_source(qtree_and_node *node, dbi_conn dbi)
 		dbi, NULL, NULL, tag);
 }
 
-/*
+/**
  * Deletes every RDS involved with one query
  *
  * @param query the query driving the deletion

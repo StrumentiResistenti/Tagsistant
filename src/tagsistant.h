@@ -101,6 +101,12 @@
 /** the default suffix appended to files to get their tags */
 #define TAGSISTANT_DEFAULT_TAGS_SUFFIX ".tags"
 
+/** the number of tuples (rows) allowed in the rds table before the GC kicks in */
+#define TAGSISTANT_GC_TUPLES 1000000
+
+/** the number of RDS (reusable data sets) allowed in the rds table before the GC kicks in */
+#define TAGSISTANT_GC_RDS 50000
+
 #include "config.h"
 
 #ifndef VERSION
