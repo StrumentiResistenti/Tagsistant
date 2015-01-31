@@ -23,6 +23,8 @@
 
 #define TAGSISTANT_USE_QUERY_MUTEX 0
 
+#define TAGSISTANT_SCHEMA_VERSION "0.8.2.1"
+
 #if TAGSISTANT_USE_QUERY_MUTEX
 GMutex tagsistant_query_mutex;
 #endif
@@ -378,10 +380,32 @@ void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_locked)
 void tagsistant_create_schema()
 {
 	dbi_conn dbi = tagsistant_db_connection(TAGSISTANT_START_TRANSACTION);
+	gchar *current_schema_version = NULL;
 
 	// create database schema
 	switch (tagsistant.sql_database_driver) {
 		case TAGSISTANT_DBI_SQLITE_BACKEND:
+			/*
+			 * Create schema table and check current schema compatiblity
+			 */
+			tagsistant_query(
+				"create table if not exists schema_version (version varchar(32))",
+				dbi, NULL, NULL);
+
+			tagsistant_query(
+				"select version from schema_version",
+				dbi, tagsistant_return_string, &current_schema_version);
+
+			if (current_schema_version && g_strcmp0(TAGSISTANT_SCHEMA_VERSION, current_schema_version) != 0) {
+				dbg('s', LOG_ERR,
+					"Required schema version %s differs from current schema version %s",
+					TAGSISTANT_SCHEMA_VERSION, current_schema_version);
+				exit(1);
+			}
+
+			/*
+			 * Tags table
+			 */
 			tagsistant_query(
 				"create table if not exists tags ("
 					"tag_id integer primary key autoincrement not null, "
@@ -391,6 +415,9 @@ void tagsistant_create_schema()
 					"constraint Tag_key unique (tagname, key, value))",
 				dbi, NULL, NULL);
 
+			/*
+			 * Objects table
+			 */
 			tagsistant_query(
 				"create table if not exists objects ("
 					"inode integer not null primary key autoincrement, "
@@ -400,6 +427,9 @@ void tagsistant_create_schema()
 					"symlink text(1024) not null default '')",
 				dbi, NULL, NULL);
 
+			/*
+			 * Tagging table
+			 */
 			tagsistant_query(
 				"create table if not exists tagging ("
 					"inode integer not null, "
@@ -407,6 +437,9 @@ void tagsistant_create_schema()
 					"constraint Tagging_key unique (inode, tag_id))",
 				dbi, NULL, NULL);
 
+			/*
+			 * Relations table
+			 */
 			tagsistant_query(
 				"create table if not exists relations ("
 					"relation_id integer primary key autoincrement not null, "
@@ -415,12 +448,18 @@ void tagsistant_create_schema()
 					"tag2_id integer not null)",
 				dbi, NULL, NULL);
 
+			/*
+			 * Aliases table
+			 */
 			tagsistant_query(
 				"create table if not exists aliases ("
 					"alias varchar(65) primary key not null, "
 					"query varchar(%d) not null)",
 				dbi, NULL, NULL, TAGSISTANT_ALIAS_MAX_LENGTH);
 
+			/*
+			 * RDS table
+			 */
 			tagsistant_query(
 				"create temporary table if not exists rds ("
 					"id varchar(32) not null, "
@@ -431,6 +470,9 @@ void tagsistant_create_schema()
 					"creation datetime not null default CURRENT_DATE)",
 				dbi, NULL, NULL);
 
+			/*
+			 * Index declarations
+			 */
 			tagsistant_query("create index if not exists relations_index on relations (tag1_id, tag2_id)", dbi, NULL, NULL);
 			tagsistant_query("create index if not exists objectname_index on objects (objectname)", dbi, NULL, NULL);
 			tagsistant_query("create index if not exists symlink_index on objects (symlink, inode)", dbi, NULL, NULL);
@@ -439,9 +481,35 @@ void tagsistant_create_schema()
 			tagsistant_query("create index if not exists aliases_index on aliases (alias)", dbi, NULL, NULL);
 			tagsistant_query("create index if not exists rds_index1 on rds (id, reasoned, objectname, inode)", dbi, NULL, NULL);
 			tagsistant_query("create index if not exists rds_index2 on rds (id, reasoned, inode, objectname)", dbi, NULL, NULL);
+
+			tagsistant_query("delete from schema_version", dbi, NULL, NULL);
+			tagsistant_query("insert into schema_version (version) values (\"%s\")",
+				dbi, NULL, NULL, TAGSISTANT_SCHEMA_VERSION);
+
 			break;
 
 		case TAGSISTANT_DBI_MYSQL_BACKEND:
+			/*
+			 * Create schema table and check current schema compatiblity
+			 */
+			tagsistant_query(
+				"create table if not exists schema_version (version varchar(32))",
+				dbi, NULL, NULL);
+
+			tagsistant_query(
+				"select version from schema_version",
+				dbi, tagsistant_return_string, &current_schema_version);
+
+			if (current_schema_version && g_strcmp0(TAGSISTANT_SCHEMA_VERSION, current_schema_version) != 0) {
+				dbg('s', LOG_ERR,
+					"Required schema version %s differs from current schema version %s",
+					TAGSISTANT_SCHEMA_VERSION, current_schema_version);
+				exit(1);
+			}
+
+			/*
+			 * Tags table
+			 */
 			tagsistant_query(
 				"create table if not exists tags ("
 					"tag_id integer primary key auto_increment not null, "
@@ -451,6 +519,9 @@ void tagsistant_create_schema()
 					"constraint Tag_key unique `key` (tagname, `key`, value))",
 				dbi, NULL, NULL);
 
+			/*
+			 * Objects table
+			 */
 			tagsistant_query(
 				"create table if not exists objects ("
 					"inode integer not null primary key auto_increment, "
@@ -460,6 +531,9 @@ void tagsistant_create_schema()
 					"symlink varchar(1024) not null default '')",
 				dbi, NULL, NULL);
 
+			/*
+			 * Tagging table
+			 */
 			tagsistant_query(
 				"create table if not exists tagging ("
 					"inode integer not null, "
@@ -467,6 +541,9 @@ void tagsistant_create_schema()
 					"constraint Tagging_key unique key (inode, tag_id))",
 				dbi, NULL, NULL);
 
+			/*
+			 * Relations table
+			 */
 			tagsistant_query(
 				"create table if not exists relations ("
 					"relation_id integer primary key auto_increment not null, "
@@ -475,12 +552,18 @@ void tagsistant_create_schema()
 					"tag2_id integer not null)",
 				dbi, NULL, NULL);
 
+			/*
+			 * Aliases table
+			 */
 			tagsistant_query(
 				"create table if not exists aliases ("
 					"alias varchar(65) primary key not null, "
 					"query varchar(%d) not null)",
 				dbi, NULL, NULL, TAGSISTANT_ALIAS_MAX_LENGTH);
 
+			/*
+			 * RDS table
+			 */
 			tagsistant_query(
 				"create temporary table if not exists rds ("
 					"id varchar(32) not null, "
@@ -491,6 +574,9 @@ void tagsistant_create_schema()
 					"creation datetime not null) ENGINE = MEMORY",
 				dbi, NULL, NULL);
 
+			/*
+			 * Index declarations
+			 */
 			tagsistant_query("create index relations_index on relations (tag1_id, tag2_id)", dbi, NULL, NULL);
 			tagsistant_query("create index objectname_index on objects (objectname)", dbi, NULL, NULL);
 			tagsistant_query("create index symlink_index on objects (symlink, inode)", dbi, NULL, NULL);
@@ -499,6 +585,14 @@ void tagsistant_create_schema()
 			tagsistant_query("create index aliases_index on aliases (alias)", dbi, NULL, NULL);
 			tagsistant_query("create index rds_index1 on rds (id, reasoned, objectname, inode)", dbi, NULL, NULL);
 			tagsistant_query("create index rds_index2 on rds (id, reasoned, inode, objectname)", dbi, NULL, NULL);
+
+			/*
+			 * Schema version update
+			 */
+			tagsistant_query("delete from schema_version", dbi, NULL, NULL);
+			tagsistant_query("insert into schema_version (version) values (\"%s\")",
+				dbi, NULL, NULL, TAGSISTANT_SCHEMA_VERSION);
+
 			break;
 
 		default:

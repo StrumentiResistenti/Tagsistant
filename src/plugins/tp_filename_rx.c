@@ -220,15 +220,15 @@ int tagsistant_plugin_init()
 	splitter  = tagsistant_get_ini_entry("filename_rx", "splitter");
 	tmp_split = tagsistant_get_ini_entry("filename_rx", "split");
 
-	/* check if filename splitting is requested */
-	if (g_regex_match_simple("^(no|false|0)$", tmp_split, G_REGEX_CASELESS, 0)) split = 0;
-	g_free_null(tmp_split);
-
 	/* return without initializing the plugin */
 	if (!pattern || !strlen(pattern)) return(0);
 
 	/* set a default token splitter */
 	if (!splitter || !strlen(splitter)) splitter = g_strdup(".");
+
+	/* check if filename splitting is requested */
+	if (tmp_split && g_regex_match_simple("^(no|false|0)$", tmp_split, G_REGEX_CASELESS, 0)) split = 0;
+	g_free_null(tmp_split);
 
 	/* split the filter into rules */
 	gchar **rules = g_regex_split_simple(rule_splitter, pattern, G_REGEX_EXTENDED, 0);
@@ -249,6 +249,8 @@ int tagsistant_plugin_init()
 			GError *err = NULL;
 			prule->rx = g_regex_new(pattern, G_REGEX_CASELESS|G_REGEX_EXTENDED|G_REGEX_ANCHORED|G_REGEX_OPTIMIZE, 0, &err);
 			if (err) {
+				dbg('p', LOG_ERR, "Error compiling regular expression \"%s\": %s", pattern, err->message);
+				g_error_free(err);
 				g_free(prule->pattern);
 				g_free(prule);
 				continue;
