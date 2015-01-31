@@ -226,7 +226,8 @@ void tagsistant_read_stats_configuration(gchar stats_buffer[TAGSISTANT_STATS_BUF
 		"             TAGSISTANT_TAG_GROUP_END: %s\n"
 		"  TAGSISTANT_DEFAULT_TRIPLE_TAG_REGEX: %s\n"
 		"       TAGSISTANT_DEFAULT_TAGS_SUFFIX: %s\n"
-
+		"                 TAGSISTANT_GC_TUPLES: %d\n"
+		"                    TAGSISTANT_GC_RDS: %d\n"
 		"\n",
 		tagsistant.mountpoint,
 		tagsistant.repository,
@@ -258,6 +259,8 @@ void tagsistant_read_stats_configuration(gchar stats_buffer[TAGSISTANT_STATS_BUF
 		TAGSISTANT_TAG_GROUP_BEGIN,
 		TAGSISTANT_TAG_GROUP_END,
 		TAGSISTANT_DEFAULT_TRIPLE_TAG_REGEX,
-		TAGSISTANT_DEFAULT_TAGS_SUFFIX
+		TAGSISTANT_DEFAULT_TAGS_SUFFIX,
+		TAGSISTANT_GC_TUPLES,
+		TAGSISTANT_GC_RDS
 	);
 }
