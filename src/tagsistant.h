@@ -21,7 +21,7 @@
 */
 
 /** Tagsistant codename of current release */
-#define TAGSISTANT_CODENAME "Berlin"
+#define TAGSISTANT_CODENAME "Athens"
 
 /** Tagsistant plugin prefix */
 #define TAGSISTANT_PLUGIN_PREFIX "libtagsistant_"

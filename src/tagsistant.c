@@ -130,7 +130,7 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"  Tagsistant (tagfs) v.%s (codename: %s) \n"
 		"  Build: %s FUSE_USE_VERSION: %d\n"
 		"  Semantic File System for Linux kernels\n"
-		"  (c) 2006-2014 Tx0 <tx0@strumentiresistenti.org>\n"
+		"  (c) 2006-2015 Tx0 <tx0@strumentiresistenti.org>\n"
 		"\n  %s"
 		"Usage: \n"
 		"\n"

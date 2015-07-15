@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 # AC_PREREQ(2.65)
-AC_INIT([tagsistant],[0.8.1],[tx0@strumentiresistenti.org])
+AC_INIT([tagsistant],[0.8.2],[tx0@strumentiresistenti.org])
 # AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_COPYRIGHT([tagsistant is (C) Tx0 <tx0@strumentiresistenti.org>])
