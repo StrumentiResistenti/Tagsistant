@@ -43,6 +43,7 @@
 extern void tagsistant_db_init();
 extern dbi_conn *tagsistant_db_connection(int start_transaction);
 extern void tagsistant_create_schema();
+extern void tagsistant_sql_save_status();
 
 #define _safe_string(string) string ? string : ""
 

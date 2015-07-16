@@ -374,6 +374,14 @@ void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_locked)
 	}
 }
 
+gchar *tagsistant_get_timestamp()
+{
+	GDateTime *dt = g_date_time_new_now_local();
+	gchar *stamp = g_date_time_format(dt, "%Y-%m-%d-%H-%M-%S");
+	g_date_time_unref(dt);
+	return (stamp);
+}
+
 /**
  * Create DB schema
  */
@@ -603,45 +611,81 @@ void tagsistant_create_schema()
 	tagsistant_db_connection_release(dbi, 1);
 }
 
+
+/**
+ * Save in the status table some state values
+ */
+void tagsistant_sql_save_status()
+{
+	dbi_conn dbi = tagsistant_db_connection(TAGSISTANT_DONT_START_TRANSACTION);
+
+	gchar *stamp = tagsistant_get_timestamp();
+	if (stamp) {
+		tagsistant_query("delete from status where state = 'wal_timestamp'", dbi, NULL, NULL);
+		tagsistant_query("insert into status values ('wal_timestamp', '%s')", dbi, NULL, NULL, stamp);
+		g_free(stamp);
+	}
+}
+
+/**
+ * Record eligible queries into the write ahead log
+ *
+ * @param statement the SQL query to save
+ */
 void tagsistant_wal(gchar *statement)
 {
 	static int fd = -1;
 
 	/*
-	 * guess if a statement is eligible for the WAL
+	 * Guess if a statement is eligible for being written into the WAL
 	 */
 	if (!g_regex_match_simple(
 		"^(insert[ ]*into|update|delete[ ]*from)[ ]*(tags|objects|relations|tagging|aliases).*$",
 		statement, G_REGEX_CASELESS|G_REGEX_EXTENDED, 0)) return;
 
 	/*
-	 * open the WAL
+	 * Get the current timestamp
+	 */
+	gchar *stamp = tagsistant_get_timestamp();
+
+	/*
+	 * Format the log entry and compute its length
+	 */
+	gchar *log_line = g_strdup_printf("%s: %s\n", stamp, statement);
+	gchar *ptr = log_line;
+	ssize_t line_length = strlen(log_line);
+
+	/*
+	 * Open the write ahead log
 	 */
 	if (-1 == fd) {
-		gchar *wal_path = g_strdup_printf("%s/wal", tagsistant.repository);
+		/*
+		 * Check if WAL directory has been created
+		 */
+		gchar *wal_dir = g_strdup_printf("%s/wal", tagsistant.repository);
+		if (wal_dir) {
+			int res = mkdir(wal_dir, S_IRWXU);
+			g_free(wal_dir);
+			if (-1 == res) {
+				dbg(LOG_ERR, 's', "WAL: error creating WAL directory %s/wal: %s", tagsistant.repository, strerror(errno));
+				goto WAL_OUT;
+			}
+		}
+
+		gchar *wal_path = g_strdup_printf("%s/wal/%s", tagsistant.repository, stamp);
 		if (wal_path) {
 			fd = open(wal_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
 			g_free(wal_path);
 
 			if (-1 == fd) {
-				dbg(LOG_ERR, 's', "WAL: %s on statement [%s]", strerror(errno), statement);
+				dbg(LOG_ERR, 's', "WAL: unable to open log %s/wal/%s: %s", tagsistant.repository, stamp, strerror(errno));
 				return;
 			}
 		} else {
-			dbg(LOG_ERR, 's', "WAL: can't allocate file name %s/wal", tagsistant.repository);
+			dbg(LOG_ERR, 's', "WAL: can't allocate file name %s/wal/%s", tagsistant.repository, stamp);
 			return;
 		}
 	}
-
-	/*
-	 * Get current timestamp
-	 */
-	GDateTime *dt = g_date_time_new_now_local();
-	gchar *stamp = g_date_time_format(dt, "%s-%Y-%m-%d-%H-%M-%S");
-
-	gchar *log_line = g_strdup_printf("%s: %s\n", stamp, statement);
-	gchar *ptr = log_line;
-	ssize_t line_length = strlen(log_line);
 
 	/*
 	 * Write the line in the WAL
@@ -657,13 +701,10 @@ void tagsistant_wal(gchar *statement)
 		}
 	}
 
+WAL_OUT:
 	g_free(log_line);
 	g_free(stamp);
-	g_date_time_unref(dt);
-
-	// close(fd);
 }
-
 
 /**
  * Prepare SQL queries and perform them.

@@ -702,6 +702,11 @@ int main(int argc, char *argv[])
 	fuse_opt_free_args(&args);
 
 	/*
+	 * update the status in the SQL DB
+	 */
+	tagsistant_sql_save_status();
+
+	/*
 	 * unloading plugins
 	 */
 	tagsistant_plugin_unloader();
