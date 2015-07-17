@@ -377,7 +377,7 @@ void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_locked)
 gchar *tagsistant_get_timestamp()
 {
 	GDateTime *dt = g_date_time_new_now_local();
-	gchar *stamp = g_date_time_format(dt, "%Y-%m-%d-%H-%M-%S");
+	gchar *stamp = g_date_time_format(dt, "%Y-%m-%d-%H-%M-%S-%s");
 	g_date_time_unref(dt);
 	return (stamp);
 }
@@ -476,6 +476,12 @@ void tagsistant_create_schema()
 					"objectname text(255) not null, "
 					"tagset text not null, "
 					"creation datetime not null default CURRENT_DATE)",
+				dbi, NULL, NULL);
+
+			tagsistant_query(
+				"create table if not exists status ("
+					"state varchar(16) primary key not null, "
+					"query varchar(256) not null)",
 				dbi, NULL, NULL);
 
 			/*
@@ -582,6 +588,12 @@ void tagsistant_create_schema()
 					"creation datetime not null) ENGINE = MEMORY",
 				dbi, NULL, NULL);
 
+			tagsistant_query(
+				"create table if not exists status ("
+					"state varchar(16) primary key not null, "
+					"query varchar(256) not null)",
+				dbi, NULL, NULL);
+
 			/*
 			 * Index declarations
 			 */
@@ -628,11 +640,51 @@ void tagsistant_sql_save_status()
 }
 
 /**
+ * Update a status value
+ *
+ * @param dbi a valid DBI connection (no ping is done)
+ * @param key the status value key
+ * @param value the status value saved
+ */
+void tagsistant_save_status(dbi_conn dbi, gchar *key, gchar *value)
+{
+	gchar *query = NULL;
+
+	dbg('s', LOG_ERR, "Updating status %s => %s", key, value);
+
+	query = g_strdup_printf("delete from status where state = '%s'", key);
+	if (!query) return;
+
+	dbi_result result = dbi_conn_query(dbi, query);
+	g_free(query);
+
+	if (!result) {
+		const char *errmsg = NULL;
+		dbi_conn_error(dbi, &errmsg);
+		if (errmsg) dbg('s', LOG_ERR, "Error saving status %s => %s: %s", key, value, errmsg);
+		return;
+	}
+
+	query = g_strdup_printf("insert into status values ('%s', '%s')", key, value);
+	if (!query) return;
+
+	result = dbi_conn_query(dbi, query);
+	g_free(query);
+
+	if (!result) {
+		const char *errmsg = NULL;
+		dbi_conn_error(dbi, &errmsg);
+		if (errmsg) dbg('s', LOG_ERR, "Error saving status %s => %s: %s", key, value, errmsg);
+	}
+}
+
+/**
  * Record eligible queries into the write ahead log
  *
+ * @param dbi a DBI active connection (no ping is done)
  * @param statement the SQL query to save
  */
-void tagsistant_wal(gchar *statement)
+void tagsistant_wal(dbi_conn dbi, gchar *statement)
 {
 	static int fd = -1;
 
@@ -642,6 +694,8 @@ void tagsistant_wal(gchar *statement)
 	if (!g_regex_match_simple(
 		"^(insert[ ]*into|update|delete[ ]*from)[ ]*(tags|objects|relations|tagging|aliases).*$",
 		statement, G_REGEX_CASELESS|G_REGEX_EXTENDED, 0)) return;
+
+	dbg('s', LOG_ERR, "Saving WAL: %s", statement);
 
 	/*
 	 * Get the current timestamp
@@ -666,8 +720,8 @@ void tagsistant_wal(gchar *statement)
 		if (wal_dir) {
 			int res = mkdir(wal_dir, S_IRWXU);
 			g_free(wal_dir);
-			if (-1 == res) {
-				dbg(LOG_ERR, 's', "WAL: error creating WAL directory %s/wal: %s", tagsistant.repository, strerror(errno));
+			if ((-1 == res) && (EEXIST != errno)) {
+				dbg('s', LOG_ERR, "WAL: error creating WAL directory %s/wal: %s", tagsistant.repository, strerror(errno));
 				goto WAL_OUT;
 			}
 		}
@@ -678,11 +732,11 @@ void tagsistant_wal(gchar *statement)
 			g_free(wal_path);
 
 			if (-1 == fd) {
-				dbg(LOG_ERR, 's', "WAL: unable to open log %s/wal/%s: %s", tagsistant.repository, stamp, strerror(errno));
+				dbg('s', LOG_ERR, "WAL: unable to open log %s/wal/%s: %s", tagsistant.repository, stamp, strerror(errno));
 				return;
 			}
 		} else {
-			dbg(LOG_ERR, 's', "WAL: can't allocate file name %s/wal/%s", tagsistant.repository, stamp);
+			dbg('s', LOG_ERR, "WAL: can't allocate file name %s/wal/%s", tagsistant.repository, stamp);
 			return;
 		}
 	}
@@ -700,6 +754,8 @@ void tagsistant_wal(gchar *statement)
 			ptr += written;
 		}
 	}
+
+	tagsistant_save_status(dbi, "wal_timestamp", stamp);
 
 WAL_OUT:
 	g_free(log_line);
@@ -772,7 +828,7 @@ int tagsistant_real_query(
 	dbi_result result = dbi_conn_query(dbi, escaped_statement);
 
 	tagsistant_dirty_logging(escaped_statement);
-	tagsistant_wal(escaped_statement);
+	tagsistant_wal(dbi, escaped_statement);
 
 	g_free_null(escaped_format);
 	g_free_null(escaped_statement_tmp);
