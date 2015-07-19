@@ -77,7 +77,15 @@ if test [ "x$debug_free" == "xyes" ]; then
 fi
 
 AC_CHECK_LIB([gthread-2.0], [g_thread_init],,[
-	AC_MSG_FAILURE(["GThread support not available. Please install libgthread"])
+    AC_MSG_FAILURE(["GThread support not available. Please install glib"])
+])
+
+AC_CHECK_LIB([glib-2.0], [g_main_loop_new],,[
+    AC_MSG_FAILURE(["GLib support not available. Please install glib"])
+])
+
+AC_CHECK_LIB([gio-2.0], [g_file_new_for_path],,[
+    AC_MSG_FAILURE(["GIO support not available. Please install glib"])
 ])
 
 AC_CHECK_LIB([fuse],[fuse_main],,[
