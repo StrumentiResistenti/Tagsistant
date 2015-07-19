@@ -44,5 +44,5 @@ tagsistant_SOURCES = tagsistant.c\
 	fuse_operations/listxattr.c\
 	fuse_operations/removexattr.c
 
-tagsistant_CFLAGS = -D'PLUGINS_DIR="@libdir@/"' $(CFLAGS) `pkg-config --cflags glib-2.0`
-tagsistant_LDFLAGS = -lfuse -ldl -rdynamic `pkg-config --libs glib-2.0` -lextractor
+tagsistant_CFLAGS = -D'PLUGINS_DIR="@libdir@/"' $(CFLAGS) `pkg-config --cflags glib-2.0 gio-2.0`
+tagsistant_LDFLAGS = -lfuse -ldl -rdynamic `pkg-config --libs glib-2.0 gio-2.0` -lextractor

@@ -667,6 +667,7 @@ int main(int argc, char *argv[])
 	 */
 	tagsistant_db_init();
 	tagsistant_create_schema();
+	tagsistant_wal_sync();
 	tagsistant_path_resolution_init();
 	tagsistant_reasoner_init();
 	tagsistant_utils_init();
@@ -700,11 +701,6 @@ int main(int argc, char *argv[])
 	 */
 	res = tagsistant_fuse_main(&args, &tagsistant_oper);
 	fuse_opt_free_args(&args);
-
-	/*
-	 * update the status in the SQL DB
-	 */
-	tagsistant_sql_save_status();
 
 	/*
 	 * unloading plugins

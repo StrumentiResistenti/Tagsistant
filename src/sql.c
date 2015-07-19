@@ -245,7 +245,6 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 			tagsistant_connection_pool = g_list_delete_link(tagsistant_connection_pool, pool);
 			connections--;
 		} else {
-//			dbg('s', LOG_INFO, "Reusing DBI connection (currently %d created", connections);
 			tagsistant_connection_pool = g_list_remove_link(tagsistant_connection_pool, pool);
 			g_list_free_1(pool);
 			break;
@@ -257,8 +256,7 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 	/*
 	 * unlock the pool mutex only if the backend is not SQLite
 	 */
-////	if (tagsistant.sql_database_driver != TAGSISTANT_DBI_SQLITE_BACKEND)
-		g_mutex_unlock(&tagsistant_connection_pool_lock);
+	g_mutex_unlock(&tagsistant_connection_pool_lock);
 
 	if (!dbi) {
 		// initialize DBI drivers
@@ -357,14 +355,9 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
  */
 void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_locked)
 {
-	/* lock the pool if the backend is not SQLite */
-	//// if (tagsistant.sql_database_driver != TAGSISTANT_DBI_SQLITE_BACKEND)
-		g_mutex_lock(&tagsistant_connection_pool_lock);
-
 	/* release the connection back to the pool */
+	g_mutex_lock(&tagsistant_connection_pool_lock);
 	tagsistant_connection_pool = g_list_prepend(tagsistant_connection_pool, dbi);
-
-	/* unlock the pool */
 	g_mutex_unlock(&tagsistant_connection_pool_lock);
 
 	if (is_writer_locked) {
@@ -481,7 +474,7 @@ void tagsistant_create_schema()
 			tagsistant_query(
 				"create table if not exists status ("
 					"state varchar(16) primary key not null, "
-					"query varchar(256) not null)",
+					"value varchar(256) not null)",
 				dbi, NULL, NULL);
 
 			/*
@@ -591,7 +584,7 @@ void tagsistant_create_schema()
 			tagsistant_query(
 				"create table if not exists status ("
 					"state varchar(16) primary key not null, "
-					"query varchar(256) not null)",
+					"value varchar(256) not null)",
 				dbi, NULL, NULL);
 
 			/*
@@ -623,21 +616,184 @@ void tagsistant_create_schema()
 	tagsistant_db_connection_release(dbi, 1);
 }
 
+GRegex *wal_pattern = NULL;
 
-/**
- * Save in the status table some state values
- */
-void tagsistant_sql_save_status()
+gboolean tagsistant_wal_apply_line(dbi_conn dbi, const gchar *line, const gchar *last_tstamp)
 {
-	dbi_conn dbi = tagsistant_db_connection(TAGSISTANT_DONT_START_TRANSACTION);
+	gboolean retcode = FALSE;
 
-	gchar *stamp = tagsistant_get_timestamp();
-	if (stamp) {
-		tagsistant_query("delete from status where state = 'wal_timestamp'", dbi, NULL, NULL);
-		tagsistant_query("insert into status values ('wal_timestamp', '%s')", dbi, NULL, NULL, stamp);
-		g_free(stamp);
+	GMatchInfo *info;
+	if (!g_regex_match(wal_pattern, line, 0, &info)) {
+		dbg('s', LOG_ERR, "WAL: malformed log entry %s", line);
+		return (FALSE);
+	}
+
+	gchar *tstamp = g_match_info_fetch(info, 1);
+	gchar *statement = g_match_info_fetch(info, 2);
+
+	if (strcmp(tstamp, last_tstamp) > 0) {
+		/*
+		 * execute the statement
+		 */
+		dbi_result result = dbi_conn_query(dbi, statement);
+		if (!result) {
+			const char *errmsg = NULL;
+			dbi_conn_error(dbi, &errmsg);
+			if (errmsg) dbg('s', LOG_ERR, "WAL: Error syncing [%s]: %s", statement, errmsg);
+		} else {
+			retcode = TRUE;
+		}
+	} else {
+		retcode = TRUE;
+	}
+
+	g_free(tstamp);
+	g_free(statement);
+	g_match_info_free(info);
+	return (retcode);
+}
+
+gboolean tagsistant_wal_apply_log(dbi_conn dbi, const gchar *log_entry, const gchar *last_tstamp)
+{
+	gboolean parsed = FALSE;
+
+	gchar *wal_entry_path = g_strdup_printf("%s/wal/%s", tagsistant.repository, log_entry);
+	if (!wal_entry_path) {
+		dbg('s', LOG_ERR, "WAL: error opening %s/wal/%s", tagsistant.repository, log_entry);
+		return (FALSE);
+	}
+
+	GFile *f = g_file_new_for_path(wal_entry_path);
+	if (f) {
+		GFileInputStream *s = g_file_read(f, NULL, NULL);
+		if (s) {
+			GDataInputStream *ds = g_data_input_stream_new(G_INPUT_STREAM(s));
+			if (ds) {
+				while (1) {
+					gsize size;
+					GError *error = NULL;
+					gchar *line = g_data_input_stream_read_line(ds, &size, NULL, &error);
+					if (line) {
+						if (!tagsistant_wal_apply_line(dbi, line, last_tstamp)) break;
+					} else {
+						if (!error) {
+							// last line read
+							parsed = TRUE;
+						} else {
+							dbg('s', LOG_ERR, "WAL: error parsing line: %s", error->message);
+							g_error_free(error);
+						}
+						break;
+					}
+				}
+				g_object_unref(ds);
+			}
+			g_object_unref(s);
+		}
+		g_object_unref(f);
+	}
+	g_free(wal_entry_path);
+
+	return (parsed);
+}
+
+void tagsistant_wal_sync()
+{
+	/*
+	 * compile the WAL pattern regex
+	 */
+	if (!wal_pattern) wal_pattern = g_regex_new("([^:]+): (.*)", G_REGEX_EXTENDED|G_REGEX_CASELESS, 0, NULL);
+
+	/*
+	 * compute the wal directory path
+	 */
+	gchar *wal_dir = g_strdup_printf("%s/wal", tagsistant.repository);
+	if (!wal_dir) {
+		dbg('s', LOG_ERR, "WAL: error restoring the WAL");
+		exit (1);
+	}
+
+	/*
+	 * open a DB connection
+	 */
+	dbi_conn dbi = tagsistant_db_connection(TAGSISTANT_START_TRANSACTION);
+	gboolean commit = FALSE;
+
+	/*
+	 * load the last timestamp inserted
+	 */
+	gchar *last_tstamp = NULL;
+	tagsistant_query(
+		"select value from status where state = 'wal_timestamp'",
+		dbi, tagsistant_return_string, &last_tstamp);
+
+	if (!last_tstamp) {
+		/*
+		 * check if this is an empty filesystem
+		 */
+		int entries = 0;
+		tagsistant_query(
+			"select sum(entries) as entries from ("
+				"select count(*) as entries from objects "
+				"union all "
+				"select count(*) as entries from tags "
+			")",
+			dbi, tagsistant_return_integer, &entries);
+
+		if (entries) {
+			dbg('s', LOG_ERR, "WAL: error loading last timestamp, can't proceed");
+			exit (1);
+		} else {
+			dbg('s', LOG_INFO, "WAL: skipping sync on empty repository");
+			tagsistant_rollback_transaction(dbi);
+			tagsistant_db_connection_release(dbi, 1);
+			g_free(wal_dir);
+			return;
+		}
+	}
+
+	/*
+	 * open the WAL directory and scan its files
+	 */
+	GError *error = NULL;
+	GDir *dir = g_dir_open(wal_dir, 0, &error);
+	if (dir) {
+		const gchar *entry;
+		while (1) {
+			entry = g_dir_read_name(dir);
+			if (!entry) {
+				commit = TRUE;
+				break;
+			}
+
+			if (!tagsistant_wal_apply_log(dbi, entry, last_tstamp)) break;
+		}
+		g_dir_close(dir);
+	} else {
+		dbg('s', LOG_ERR, "WAL: error opening directory: %s", error->message);
+		g_error_free(error);
+	}
+
+	/*
+	 * on positive sync, commit the transaction, otherwise roll back
+	 */
+	if (commit)
+		tagsistant_commit_transaction(dbi);
+	else
+		tagsistant_rollback_transaction(dbi);
+
+	tagsistant_db_connection_release(dbi, 1);
+	g_free(wal_dir);
+
+	/*
+	 * if unable to sync the WAL, exit to avoid mounting a compromised database
+	 */
+	if (!commit) {
+		dbg('s', LOG_ERR, "WAL: error merging write-ahead logs into DB, can't mount a compromised repository");
+		exit (1);
 	}
 }
+
 
 /**
  * Update a status value

@@ -133,7 +133,9 @@
 #define FUSE_USE_VERSION 26
 #endif
 
+#ifndef _REENTRANT
 #define _REENTRANT
+#endif
 #define _POSIX_PTHREAD_SEMANTICS
 
 #include <pthread.h>
@@ -162,6 +164,7 @@
 #include <signal.h>
 #include <dlfcn.h> /* for dlopen() and friends */
 #include <glib.h>
+#include <gio/gio.h>
 #include <inttypes.h>
 #include <stdint.h>
 
