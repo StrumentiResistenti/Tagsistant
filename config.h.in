@@ -31,6 +31,12 @@
 /* Define to 1 if you have the `fuse' library (-lfuse). */
 #undef HAVE_LIBFUSE
 
+/* Define to 1 if you have the `gio-2.0' library (-lgio-2.0). */
+#undef HAVE_LIBGIO_2_0
+
+/* Define to 1 if you have the `glib-2.0' library (-lglib-2.0). */
+#undef HAVE_LIBGLIB_2_0
+
 /* Define to 1 if you have the `gthread-2.0' library (-lgthread-2.0). */
 #undef HAVE_LIBGTHREAD_2_0
 

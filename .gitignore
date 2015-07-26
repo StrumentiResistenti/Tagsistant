@@ -1,29 +1,49 @@
-*/.dirstamp
-*.lo
+# Object files
 *.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
 *.la
-<<<<<<< HEAD
-Makefile.int
-aclocal.m4
-configure
-libtool
-*/.dirstamp
-aclocal.m4
-=======
->>>>>>> fe31f5c9e57d7958181e3421bf78b2035b6ef9bd
-ar-lib
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+
+*.deps/
+*.dirstamp
 autom4te.cache
-compile
+config.log
+config.h.in
+*.swp
+.libs/
+.project
+*~
+src/tagsistant
+*stamp-*
+src/plugins/Makefile.in
 config.guess
 config.status
-config.log
 config.sub
-configure.ac.barebone
-install-sh
-.deps
-.dirstamp
-.libs
-ltmain.sh
-stamp-h1
-Makefile
-depcomp
+language.settings.xml

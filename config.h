@@ -32,6 +32,12 @@
 /* Define to 1 if you have the `fuse' library (-lfuse). */
 #define HAVE_LIBFUSE 1
 
+/* Define to 1 if you have the `gio-2.0' library (-lgio-2.0). */
+#define HAVE_LIBGIO_2_0 1
+
+/* Define to 1 if you have the `glib-2.0' library (-lglib-2.0). */
+#define HAVE_LIBGLIB_2_0 1
+
 /* Define to 1 if you have the `gthread-2.0' library (-lgthread-2.0). */
 #define HAVE_LIBGTHREAD_2_0 1
 
@@ -173,7 +179,7 @@
 #define PACKAGE_NAME "tagsistant"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "tagsistant 0.8.1"
+#define PACKAGE_STRING "tagsistant 0.8.2"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "tagsistant"
@@ -182,13 +188,13 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "0.8.1"
+#define PACKAGE_VERSION "0.8.2"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Version number of package */
-#define VERSION "0.8.1"
+#define VERSION "0.8.2"
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */
