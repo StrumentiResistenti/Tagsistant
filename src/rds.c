@@ -88,6 +88,16 @@ static int tagsistant_add_to_fileset(void *hash_table_pointer, dbi_result result
  */
 void tagsistant_query_add_and_set(GString *statement, qtree_and_node *and_set)
 {
+	if (!and_set) {
+		dbg('f', LOG_ERR, "tagsistant_query_add_and_set() called with NULL and_set");
+		return;
+	}
+
+	if (!statement) {
+		dbg('f', LOG_ERR, "tagsistant_query_add_and_set() called with NULL statement");
+		return;
+	}
+
 	if (and_set->value && strlen(and_set->value)) {
 		switch (and_set->operator) {
 			case TAGSISTANT_EQUAL_TO:
