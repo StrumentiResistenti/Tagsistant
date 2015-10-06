@@ -295,7 +295,7 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 		 */
 		tagsistant_query_add_and_set(create_base_table, query->and_set);
 
-		qtree_and_node *related = query->and_set->related;
+		qtree_and_node *related = query->and_set ? query->and_set->related : NULL;
 		while (related) {
 			g_string_append(create_base_table, " or ");
 			tagsistant_query_add_and_set(create_base_table, related);
@@ -313,7 +313,7 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 		 * for each ->next linked node, subtract from the base table
 		 * the objects not matching this node
 		 */
-		qtree_and_node *next = query->and_set->next;
+		qtree_and_node *next = query->and_set ? query->and_set->next : NULL;
 		while (next) {
 			GString *cross_tag = g_string_sized_new(51200);
 			g_string_append_printf(cross_tag,
