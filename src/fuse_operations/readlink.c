@@ -64,7 +64,7 @@ int tagsistant_readlink(const char *path, char *buf, size_t size)
 	if (res > 0) buf[res] = '\0';
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("READLINK on %s (%s) (%s): %d %d: %s", path, readlink_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

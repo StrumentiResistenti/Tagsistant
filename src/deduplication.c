@@ -61,7 +61,7 @@ int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gchar *hex
 	 */
 	struct stat st;
 	int result = lstat(qtree->full_archive_path, &st);
-	if (0 == result && S_ISDIR(st.st_mode)) {
+	if (result is 0 && S_ISDIR(st.st_mode)) {
 		dbg('2', LOG_INFO, "%s is a directory, skipping deduplication and autotagging", qtree->full_archive_path);
 		return (TAGSISTANT_DONT_DO_AUTOTAGGING);
 	}
@@ -86,18 +86,18 @@ int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gchar *hex
 	 * if this is the only copy of the file, we can
 	 * return and auto-tagging can be performed
 	 */
-	if (qtree->inode == main_inode) return (TAGSISTANT_DO_AUTOTAGGING);
+	if (qtree->inode is main_inode) return (TAGSISTANT_DO_AUTOTAGGING);
 
 	dbg('2', LOG_INFO, "Deduplicating %s: %d -> %d", qtree->full_archive_path, qtree->inode, main_inode);
 
 	/*
 	 * first move all the tags of qtree->inode to main_inode
 	 */
-	if (TAGSISTANT_DBI_SQLITE_BACKEND == tagsistant.sql_database_driver) {
+	if (tagsistant.sql_database_driver is TAGSISTANT_DBI_SQLITE_BACKEND) {
 		tagsistant_query(
 			"update or ignore tagging set inode = %d where inode = %d",
 			qtree->dbi,	NULL, NULL,	main_inode,	qtree->inode);
-	} else if (TAGSISTANT_DBI_MYSQL_BACKEND == tagsistant.sql_database_driver) {
+	} else if (tagsistant.sql_database_driver is TAGSISTANT_DBI_MYSQL_BACKEND) {
 		tagsistant_query(
 			"update ignore tagging set inode = %d where inode = %d",
 			qtree->dbi,	NULL, NULL,	main_inode,	qtree->inode);
@@ -153,7 +153,7 @@ gpointer tagsistant_deduplication_kernel(gpointer data)
 		int fd = open(qtree->full_archive_path, O_RDONLY|O_NOATIME);
 		// tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 
-		if (-1 != fd) {
+		if (fd isNot -1) {
 			dbg('2', LOG_INFO, "Running deduplication on %s", path);
 
 			GChecksum *checksum = g_checksum_new(G_CHECKSUM_SHA1);

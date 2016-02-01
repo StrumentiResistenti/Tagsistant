@@ -35,12 +35,12 @@
 		{ if (!tagsistant.quiet && tagsistant.dbg[family]) fprintf(stderr,"TS> " string " [@%s:%d]\n", ##__VA_ARGS__, __FILE__, __LINE__); }
 #endif
 
-#define strlen(string) ((string == NULL) ? 0 : strlen(string))
+#define strlen(string) ((string is NULL) ? 0 : strlen(string))
 
 #if 0
 #define tagsistant_dirty_logging(statement) {\
 	int fd = open("/tmp/tagsistant.sql", O_APPEND|O_CREAT|O_WRONLY, S_IRUSR|S_IWUSR);\
-	if (-1 != fd) {\
+	if (fd isNot -1) {\
 		int count = write(fd, statement, strlen(statement));\
 		count = write(fd, "\n", 1);\
 		(void) count;\

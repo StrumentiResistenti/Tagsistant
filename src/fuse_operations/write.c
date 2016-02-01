@@ -90,7 +90,7 @@ int tagsistant_write(const char *path, const char *buf, size_t size, off_t offse
 			tagsistant_errno = errno;
 		}
 
-		if ((-1 == res) || (0 == fh)) {
+		if ((res is -1) || (fh is -1)) {
 			if (fh) close(fh);
 			fh = open(qtree->full_archive_path, fi->flags|O_WRONLY);
 			if (fh)	res = pwrite(fh, buf, size, offset);
@@ -119,7 +119,7 @@ int tagsistant_write(const char *path, const char *buf, size_t size, off_t offse
 	// dbg('F', LOG_ERR, "Yeah!");
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("WRITE %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

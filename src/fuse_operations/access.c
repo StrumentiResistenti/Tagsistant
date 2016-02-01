@@ -34,7 +34,7 @@ int tagsistant_access(const char *path, int mode)
 	struct stat st;
 	int res = tagsistant_getattr(path, &st);
 
-	if (res == 0) {
+	if (res is 0) {
 		TAGSISTANT_STOP_OK("ACCESS on %s: OK", path);
 		return(0);
 	}

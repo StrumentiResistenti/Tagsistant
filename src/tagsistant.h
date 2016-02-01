@@ -107,6 +107,17 @@
 /** the number of RDS (reusable data sets) allowed in the rds table before the GC kicks in */
 #define TAGSISTANT_GC_RDS 50000
 
+/** cache RDS in memory or get them from SQL every time */
+#define TAGSISTANT_RDS_IN_MEMORY 1
+
+/**
+ * A trick to make code more readable and
+ * avoid unintended variable assignments
+ */
+#define eq ==
+#define is ==
+#define isNot !=
+
 #include "config.h"
 
 #ifndef VERSION
@@ -149,7 +160,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#if FUSE_USE_VERSION == 25
+#if FUSE_USE_VERSION is 25
 #	if HAVE_SYS_STATVFS_H
 #		include <sys/statvfs.h>
 # endif
@@ -179,9 +190,9 @@
 #include <extractor.h>
 
 /** define libextractor support */
-#if (EXTRACTOR_VERSION & 0x00050000) == 0x00050000
+#if (EXTRACTOR_VERSION & 0x00050000) is 0x00050000
 #	define TAGSISTANT_EXTRACTOR 5          // libextractor 0.5.x
-#elif (EXTRACTOR_VERSION & 0x00060000) == 0x00060000
+#elif (EXTRACTOR_VERSION & 0x00060000) is 0x00060000
 #	define TAGSISTANT_EXTRACTOR 6          // libextractor 0.6.x
 #else
 #	define TAGSISTANT_EXTRACTOR 0          // no support for libextractor
@@ -310,6 +321,7 @@ extern void tagsistant_init_syslog();
 extern void tagsistant_plugin_loader();
 extern void tagsistant_plugin_unloader();
 extern void tagsistant_deduplication_init();
+extern void tagsistant_rds_init();
 
 // call the plugin stack
 extern int tagsistant_process(gchar *path, gchar *full_archive_path);

@@ -52,7 +52,7 @@ int tagsistant_chmod(const char *path, mode_t mode)
 	else TAGSISTANT_ABORT_OPERATION(EROFS);
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("CHMOD %s (%s) as %d: %d %d: %s", qtree->full_archive_path, tagsistant_querytree_type(qtree), mode, res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

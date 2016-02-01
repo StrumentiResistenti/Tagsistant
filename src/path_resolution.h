@@ -125,15 +125,15 @@ extern gchar *tagsistant_querytree_types[QTYPE_TOTAL];
  * to ease coding, there are some macros to check
  * if a query if of a given type
  */
-#define QTREE_IS_MALFORMED(qtree)	(QTYPE_MALFORMED == qtree->type)
-#define QTREE_IS_ROOT(qtree)		(QTYPE_ROOT == qtree->type)
-#define QTREE_IS_TAGS(qtree)		(QTYPE_TAGS == qtree->type)
-#define QTREE_IS_ARCHIVE(qtree)		(QTYPE_ARCHIVE == qtree->type)
-#define QTREE_IS_RELATIONS(qtree)	(QTYPE_RELATIONS == qtree->type)
-#define QTREE_IS_STATS(qtree)		(QTYPE_STATS == qtree->type)
-#define QTREE_IS_RETAG(qtree)		(QTYPE_RETAG == qtree->type)
-#define QTREE_IS_STORE(qtree)		(QTYPE_STORE == qtree->type)
-#define QTREE_IS_ALIAS(qtree)		(QTYPE_ALIAS == qtree->type)
+#define QTREE_IS_MALFORMED(qtree)	(QTYPE_MALFORMED is qtree->type)
+#define QTREE_IS_ROOT(qtree)		(QTYPE_ROOT is qtree->type)
+#define QTREE_IS_TAGS(qtree)		(QTYPE_TAGS is qtree->type)
+#define QTREE_IS_ARCHIVE(qtree)		(QTYPE_ARCHIVE is qtree->type)
+#define QTREE_IS_RELATIONS(qtree)	(QTYPE_RELATIONS is qtree->type)
+#define QTREE_IS_STATS(qtree)		(QTYPE_STATS is qtree->type)
+#define QTREE_IS_RETAG(qtree)		(QTYPE_RETAG is qtree->type)
+#define QTREE_IS_STORE(qtree)		(QTYPE_STORE is qtree->type)
+#define QTREE_IS_ALIAS(qtree)		(QTYPE_ALIAS is qtree->type)
 
 /*
  * if a query points to an object on disk this returns true;
@@ -161,13 +161,13 @@ extern gchar *tagsistant_querytree_types[QTYPE_TOTAL];
  * the second is true for tags/ if both are complete,
  * and always for other types of queries
  */
-#define QTREES_ARE_SIMILAR(qtree1, qtree2) ((qtree1->type == qtree2->type) && (qtree1->complete == qtree2->complete))
+#define QTREES_ARE_SIMILAR(qtree1, qtree2) ((qtree1->type is qtree2->type) && (qtree1->complete is qtree2->complete))
 
 /*
  * check if a path is external to tagsistant mountpoint
  * without requiring query resolution and querytree building
  */
-#define TAGSISTANT_PATH_IS_EXTERNAL(path) (g_strstr_len(path, strlen(path), tagsistant.mountpoint) != path)
+#define TAGSISTANT_PATH_IS_EXTERNAL(path) (g_strstr_len(path, strlen(path), tagsistant.mountpoint) isNot path)
 
 /**
  * define the querytree structure
@@ -335,11 +335,11 @@ typedef struct {
  * @param funcpointer the function pointer
  */
 #define old_tagsistant_querytree_traverse(qtree, funcpointer, ...) {\
-	if (NULL != qtree) {\
+	if (qtree isNot NULL) {\
 		qtree_or_node *ptx = qtree->tree;\
-		while (NULL != ptx) {\
+		while (ptx isNot NULL) {\
 			qtree_and_node *andptx = ptx->and_set;\
-			while (NULL != andptx) {\
+			while (andptx isNot NULL) {\
 				if (andptx->tag) {\
 					funcpointer(qtree->dbi, andptx->tag, NULL, NULL, ##__VA_ARGS__);\
 				} else {\

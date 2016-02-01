@@ -78,7 +78,7 @@ int tagsistant_removexattr(const char *path, const char *name)
 
 TAGSISTANT_EXIT_OPERATION:
 
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("REMOVEXATTR on %s {%s}: %d %d: %s", path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

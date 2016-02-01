@@ -131,7 +131,7 @@ int tagsistant_check_single_tagging(qtree_and_node *and, dbi_conn dbi, gchar *ob
 	 * if the tag is a triple tag and its operator is not equality,
 	 * this function should return 1
 	 */
-	if (and->namespace && strlen(and->namespace) && TAGSISTANT_EQUAL_TO != and->operator) return (1);
+	if (and->namespace && strlen(and->namespace) && and->operator isNot TAGSISTANT_EQUAL_TO) return (1);
 
 	/*
 	 * otherwise the tagging has to be checked
@@ -157,7 +157,7 @@ int tagsistant_check_single_tagging(qtree_and_node *and, dbi_conn dbi, gchar *ob
  */
 tagsistant_inode tagsistant_inode_extract_from_path(const gchar *path)
 {
-	if (!path && strlen(path) == 0) return (0);
+	if (!path && strlen(path) is 0) return (0);
 
 	tagsistant_inode inode = 0;
 
@@ -231,7 +231,7 @@ tagsistant_inode tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, db
 		 * handle the ALL/ special case by guessing the inode of the first
 		 * object named objectname
 		 */
-		if (g_strcmp0(and_set_ptr->tag, "ALL") == 0) {
+		if (g_strcmp0(and_set_ptr->tag, "ALL") is 0) {
 			// get the inode from the object path
 			inode = tagsistant_inode_extract_from_path(objectname);
 
@@ -280,7 +280,7 @@ tagsistant_inode tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, db
 		 * if the inode extracted from this iteration is different from the previous one
 		 * this may suggest a case of file homonymy, so we must return a match failure
 		 */
-		if (guessed_inode != single_and_inode) goto BREAK_LOOKUP;
+		if (guessed_inode isNot single_and_inode) goto BREAK_LOOKUP;
 
 		/*
 		 * otherwise we continue with the next tag
@@ -363,7 +363,7 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 	if (!qtree->object_path)
 		return (0);
 
-	if (strlen(qtree->object_path) == 0) {
+	if (strlen(qtree->object_path) is 0) {
 		qtree->exists = 1;
 		return (1);
 	}
@@ -391,7 +391,7 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 
 	if (inode) {
 		qtree->exists = 1;
-		if (inode != qtree->inode) tagsistant_querytree_set_inode(qtree, inode);
+		if (inode isNot qtree->inode) tagsistant_querytree_set_inode(qtree, inode);
 	}
 
 	g_free_null(object_first_element);
@@ -504,7 +504,7 @@ int tagsistant_querytree_parse_store (
 	 */
 	qtree_and_node *last_and = NULL;
 	qtree_or_node  *last_or  = qtree->tree = g_new0(qtree_or_node, 1);
-	if (qtree->tree == NULL) {
+	if (qtree->tree is NULL) {
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		dbg('q', LOG_ERR, "Error allocating memory");
 		return (0);
@@ -513,28 +513,28 @@ int tagsistant_querytree_parse_store (
 	/*
 	 * begin parsing
 	 */
-	while (__TOKEN && (TAGSISTANT_QUERY_DELIMITER_CHAR != *__TOKEN)) {
-		if (strlen(__TOKEN) == 0) {
+	while (__TOKEN && (*__TOKEN isNot TAGSISTANT_QUERY_DELIMITER_CHAR)) {
+		if (strlen(__TOKEN) is 0) {
 			/* ignore zero length tokens */
 
-		} else if (strcmp(__TOKEN, TAGSISTANT_NEGATE_NEXT_TAG) == 0) {
+		} else if (strcmp(__TOKEN, TAGSISTANT_NEGATE_NEXT_TAG) is 0) {
 			/* double negations make no sense */
 			if (qtree->negate_next_tag)
 				TAGSISTANT_ABORT_STORE_PARSING(TAGSISTANT_ERROR_DOUBLE_NEGATION);
 
 			/* negation can't be used inside a tag group */
-			if (TAGSISTANT_TAG_GROUP_DONT_ADD != tag_group)
+			if (tag_group isNot TAGSISTANT_TAG_GROUP_DONT_ADD)
 				TAGSISTANT_ABORT_STORE_PARSING(TAGSISTANT_ERROR_NEGATION_INSIDE_TAG_GROUP);
 
 			qtree->negate_next_tag = 1;
 
-		} else if (strcmp(__TOKEN, TAGSISTANT_ANDSET_DELIMITER) == 0) {
+		} else if (strcmp(__TOKEN, TAGSISTANT_ANDSET_DELIMITER) is 0) {
 			/* open new entry in OR level */
 			orcount++;
 			andcount = 0;
 
 			qtree_or_node *new_or = g_new0(qtree_or_node, 1);
-			if (new_or == NULL) {
+			if (new_or is NULL) {
 				dbg('q', LOG_ERR, "Error allocating memory");
 				return (0);
 			}
@@ -543,16 +543,16 @@ int tagsistant_querytree_parse_store (
 			last_or = new_or;
 			last_and = NULL;
 
-		} else if (strcmp(__TOKEN, TAGSISTANT_TAG_GROUP_BEGIN) == 0) {
+		} else if (strcmp(__TOKEN, TAGSISTANT_TAG_GROUP_BEGIN) is 0) {
 			/* Can't nest tag groups */
-			if (TAGSISTANT_TAG_GROUP_DONT_ADD != tag_group)
+			if (tag_group isNot TAGSISTANT_TAG_GROUP_DONT_ADD)
 				TAGSISTANT_ABORT_STORE_PARSING(TAGSISTANT_ERROR_NESTED_TAG_GROUP);
 
 			tag_group = TAGSISTANT_TAG_GROUP_ADD_NEW_NODE;
 
-		} else if (strcmp(__TOKEN, TAGSISTANT_TAG_GROUP_END) == 0) {
+		} else if (strcmp(__TOKEN, TAGSISTANT_TAG_GROUP_END) is 0) {
 			/* can't close a tag group that has not been opened */
-			if (TAGSISTANT_TAG_GROUP_DONT_ADD == tag_group)
+			if (TAGSISTANT_TAG_GROUP_DONT_ADD is tag_group)
 				TAGSISTANT_ABORT_STORE_PARSING(TAGSISTANT_ERROR_CLOSE_TAG_GROUP_NOT_OPENED);
 
 			tag_group = TAGSISTANT_TAG_GROUP_DONT_ADD;
@@ -560,7 +560,7 @@ int tagsistant_querytree_parse_store (
 		} else {
 			/* save next token in new qtree_and_node_t slot */
 			qtree_and_node *and = g_new0(qtree_and_node, 1);
-			if (and == NULL) {
+			if (and is NULL) {
 				dbg('q', LOG_ERR, "Error allocating memory");
 				TAGSISTANT_ABORT_STORE_PARSING(TAGSISTANT_ERROR_MEMORY_ALLOCATION);
 				return (0);
@@ -589,18 +589,18 @@ int tagsistant_querytree_parse_store (
 
 					if (__NEXT_TOKEN) {
 						__SLIDE_TOKEN;
-						if (strcmp(__TOKEN, TAGSISTANT_GREATER_THAN_OPERATOR) == 0) {
+						if (strcmp(__TOKEN, TAGSISTANT_GREATER_THAN_OPERATOR) is 0) {
 							qtree->operator = and->operator = TAGSISTANT_GREATER_THAN;
 							// qtree->force_inode_in_filenames = 1;
 
-						} else if (strcmp(__TOKEN, TAGSISTANT_SMALLER_THAN_OPERATOR) == 0) {
+						} else if (strcmp(__TOKEN, TAGSISTANT_SMALLER_THAN_OPERATOR) is 0) {
 							qtree->operator = and->operator = TAGSISTANT_SMALLER_THAN;
 							// qtree->force_inode_in_filenames = 1;
 
-						} else if (strcmp(__TOKEN, TAGSISTANT_EQUALS_TO_OPERATOR) == 0) {
+						} else if (strcmp(__TOKEN, TAGSISTANT_EQUALS_TO_OPERATOR) is 0) {
 							qtree->operator = and->operator = TAGSISTANT_EQUAL_TO;
 
-						} else if (strcmp(__TOKEN, TAGSISTANT_CONTAINS_OPERATOR) == 0) {
+						} else if (strcmp(__TOKEN, TAGSISTANT_CONTAINS_OPERATOR) is 0) {
 							qtree->operator = and->operator = TAGSISTANT_CONTAINS;
 							// qtree->force_inode_in_filenames = 1;
 						}
@@ -643,7 +643,7 @@ int tagsistant_querytree_parse_store (
 					last_negated = last_negated->negated;
 				}
 				last_negated->negated = and;
-			} else if (TAGSISTANT_TAG_GROUP_ADD_TO_NODE == tag_group) {
+			} else if (TAGSISTANT_TAG_GROUP_ADD_TO_NODE is tag_group) {
 				/* append this node to the last related node of the last qtree_and_node */
 				qtree_and_node *last_related = last_and;
 				while (last_related->related) {
@@ -652,7 +652,7 @@ int tagsistant_querytree_parse_store (
 				last_related->related = and;
 			} else {
 				/* append this node to last qtree_and_node */
-				if (last_and == NULL) {
+				if (last_and is NULL) {
 					last_or->and_set = and;
 				} else {
 					last_and->next = and;
@@ -666,7 +666,7 @@ int tagsistant_querytree_parse_store (
 			/*
 			 * Next tokens will be added to current qtree_and_node structure
 			 */
-			if (TAGSISTANT_TAG_GROUP_ADD_NEW_NODE == tag_group) {
+			if (tag_group is TAGSISTANT_TAG_GROUP_ADD_NEW_NODE) {
 				tag_group = TAGSISTANT_TAG_GROUP_ADD_TO_NODE;
 			}
 
@@ -675,7 +675,7 @@ int tagsistant_querytree_parse_store (
 				dbg('q', LOG_INFO, "Searching for other tags related to %s", and->tag);
 
 				tagsistant_reasoning *reasoning = g_malloc(sizeof(tagsistant_reasoning));
-				if (reasoning != NULL) {
+				if (reasoning isNot NULL) {
 					reasoning->start_node = and;
 					reasoning->current_node = and;
 					reasoning->added_tags = 0;
@@ -698,7 +698,7 @@ int tagsistant_querytree_parse_store (
 	 * if last token is TAGSISTANT_QUERY_DELIMITER_CHAR,
 	 * move the pointer one element forward
 	 */
-	if (__TOKEN && (TAGSISTANT_QUERY_DELIMITER_CHAR == *__TOKEN)) {
+	if (__TOKEN && (*__TOKEN is TAGSISTANT_QUERY_DELIMITER_CHAR)) {
 		if (!qtree->tree || !qtree->tree->and_set) {
 			qtree->error_message = g_strdup(TAGSISTANT_ERROR_NULL_QUERY);
 		}
@@ -775,7 +775,7 @@ int tagsistant_querytree_parse_store (
 					/*
 					 * if just one tag is not valid, the whole andset is not valid
 					 */
-					if (tmp_inode != qtree->inode) {
+					if (tmp_inode isNot qtree->inode) {
 						valid_and_set = 0;
 						break;
 					}
@@ -1025,7 +1025,7 @@ int tagsistant_querytree_parse_stats (
 	tagsistant_querytree* qtree,
 	gchar ***token_ptr)
 {
-	if (NULL != __TOKEN) {
+	if (__TOKEN isNot NULL) {
 		qtree->stats_path = g_strdup(__TOKEN);
 		qtree->complete = 1;
 	}
@@ -1071,7 +1071,7 @@ int tagsistant_querytree_parse_archive(
 		tagsistant_querytree_set_inode(qtree, qtree->inode);
 	}
 
-	if (strlen(qtree->object_path) == 0) {
+	if (strlen(qtree->object_path) is 0) {
 		qtree->archive_path = g_strdup("");
 		qtree->full_archive_path = g_strdup(tagsistant.archive);
 	} else {
@@ -1127,7 +1127,7 @@ void tagsistant_querytree_rebuild_paths(tagsistant_querytree *qtree)
 	g_free(relative_path);
 
 	/* make the corresponding archive/ directory */
-	if (-1 == g_mkdir_with_parents(full_archive_hierarchy, 0755)) {
+	if (g_mkdir_with_parents(full_archive_hierarchy, 0755) is -1) {
 		dbg('q', LOG_ERR, "Error creating directory %s", full_archive_hierarchy);
 	}
 
@@ -1351,7 +1351,7 @@ tagsistant_querytree *tagsistant_querytree_lookup(const char *path)
 	 * the querytree is no longer valid, so we destroy it and return NULL
 	 */
 	struct stat st;
-	if (qtree->full_archive_path && (0 != stat(qtree->full_archive_path, &st))) {
+	if (qtree->full_archive_path && (stat(qtree->full_archive_path, &st) isNot 0)) {
 		g_rw_lock_reader_lock(&tagsistant_querytree_cache_lock);
 		g_hash_table_remove(tagsistant_querytree_cache, path);
 		g_rw_lock_reader_unlock(&tagsistant_querytree_cache_lock);
@@ -1554,7 +1554,7 @@ tagsistant_querytree *tagsistant_querytree_new(
 	 * the qtree object has not been found so lets allocate the querytree structure
 	 */
 	qtree = g_new0(tagsistant_querytree, 1);
-	if (qtree == NULL) {
+	if (qtree is NULL) {
 		dbg('q', LOG_ERR, "Error allocating memory");
 		return(NULL);
 	}
@@ -1609,13 +1609,13 @@ tagsistant_querytree *tagsistant_querytree_new(
 	gchar __TOKEN = splitted + 1; /* first element is always "" since path begins with '/' */
 
 	/* guess the type of the query by first token */
-	if ('\0' == __TOKEN)								qtree->type = QTYPE_ROOT;
-	else if (g_strcmp0(*token_ptr, "store") == 0)		qtree->type = QTYPE_STORE;
-	else if (g_strcmp0(*token_ptr, "relations") == 0)	qtree->type = QTYPE_RELATIONS;
-	else if (g_strcmp0(*token_ptr, "tags") == 0)		qtree->type = QTYPE_TAGS;
-	else if (g_strcmp0(*token_ptr, "alias") == 0)		qtree->type = QTYPE_ALIAS;
-	else if (g_strcmp0(*token_ptr, "archive") == 0)		qtree->type = QTYPE_ARCHIVE;
-	else if (g_strcmp0(*token_ptr, "stats") == 0)		qtree->type = QTYPE_STATS;
+	if (__TOKEN is '\0' )								qtree->type = QTYPE_ROOT;
+	else if (g_strcmp0(*token_ptr, "store") is 0)		qtree->type = QTYPE_STORE;
+	else if (g_strcmp0(*token_ptr, "relations") is 0)	qtree->type = QTYPE_RELATIONS;
+	else if (g_strcmp0(*token_ptr, "tags") is 0)		qtree->type = QTYPE_TAGS;
+	else if (g_strcmp0(*token_ptr, "alias") is 0)		qtree->type = QTYPE_ALIAS;
+	else if (g_strcmp0(*token_ptr, "archive") is 0)		qtree->type = QTYPE_ARCHIVE;
+	else if (g_strcmp0(*token_ptr, "stats") is 0)		qtree->type = QTYPE_STATS;
 	else {
 		qtree->type = QTYPE_MALFORMED;
 		dbg('q', LOG_ERR, "Malformed or not existing path (%s)", path);
@@ -1742,10 +1742,10 @@ void tagsistant_querytree_destroy(tagsistant_querytree *qtree, guint commit_tran
 
 	if (QTREE_IS_STORE(qtree)) {
 		qtree_or_node *node = qtree->tree;
-		while (node != NULL) {
+		while (node isNot NULL) {
 
 			qtree_and_node *tag = node->and_set;
-			while (tag != NULL) {
+			while (tag isNot NULL) {
 
 				// walk related tags
 				while (tag->related) {
@@ -1793,9 +1793,9 @@ extern void tagsistant_querytree_traverse(
     if (!qtree) { return; }
 
 	qtree_or_node *ptx = qtree->tree;
-	while (NULL != ptx) {
+	while (ptx isNot NULL) {
 		qtree_and_node *andptx = ptx->and_set;
-		while (NULL != andptx) {
+		while (andptx isNot NULL) {
 			if (andptx->tag) {
 				funcpointer(qtree->dbi, andptx->tag, NULL, NULL, opt_inode);
 			} else {

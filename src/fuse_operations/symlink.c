@@ -25,7 +25,7 @@ int tagsistant_create_symlink(tagsistant_querytree *to_qtree, const gchar *from,
 
 	int res = tagsistant_force_create_and_tag_object(to_qtree, tagsistant_errno);
 
-	if (-1 != res) {
+	if (res isNot -1) {
 		// save the target path for future checks
 		tagsistant_query(
 			"update objects set symlink = '%s' where inode = %d",
@@ -52,7 +52,7 @@ int tagsistant_symlink(const char *from, const char *to)
 	if (QTREE_POINTS_TO_OBJECT(to_qtree) || (QTREE_IS_STORE(to_qtree) && QTREE_IS_COMPLETE(to_qtree))) {
 
 		// if object_path is null, borrow it from original path
-		if (strlen(to_qtree->object_path) == 0) {
+		if (strlen(to_qtree->object_path) is 0) {
 			dbg('F', LOG_INFO, "Getting object path from %s", from);
 			tagsistant_querytree_set_object_path(to_qtree, g_path_get_basename(from));
 		}
@@ -91,7 +91,7 @@ int tagsistant_symlink(const char *from, const char *to)
 
 					if (strlen(symlink_target)) {
 						// it's a symlink
-						if (strcmp(symlink_target, from) == 0) {
+						if (strcmp(symlink_target, from) is 0) {
 							// 2.1. tag the available symlink with the new tag set
 							dbg('F', LOG_INFO, "SYMLINK : Deduplicating on inode %d", check_inode);
 							tagsistant_querytree_traverse(to_qtree, tagsistant_sql_tag_object, check_inode);
@@ -99,17 +99,17 @@ int tagsistant_symlink(const char *from, const char *to)
 						} else {
 							// 2. create the object
 							res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
-							if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+							if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
 						}
 					} else {
 						// 2. create the object
 						res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
-						if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+						if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
 					}
 				} else {
 					// 2. create the object
 					res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
-					if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+					if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
 				}
 			} else {
 				// 1. check if a symlink pointing to "from" path is already in the DB
@@ -131,7 +131,7 @@ int tagsistant_symlink(const char *from, const char *to)
 
 					// 2.1. create a new symlink
 					res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
-					if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+					if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
 				}
 			}
 
@@ -158,7 +158,7 @@ int tagsistant_symlink(const char *from, const char *to)
 	else TAGSISTANT_ABORT_OPERATION(EINVAL);
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("SYMLINK from %s to %s (%s) (%s): %d %d: %s", from, to, to_qtree->full_archive_path, tagsistant_querytree_type(to_qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(to_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

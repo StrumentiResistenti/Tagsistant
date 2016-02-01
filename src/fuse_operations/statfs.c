@@ -38,7 +38,7 @@ int tagsistant_statfs(const char *path, struct statfs *stbuf)
 	res = statfs(tagsistant.repository, stbuf);
 	tagsistant_errno = errno;
 
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("STATFS on %s: %d %d: %s", path, res, tagsistant_errno, strerror(tagsistant_errno));
 		return (-tagsistant_errno);
 	} else {

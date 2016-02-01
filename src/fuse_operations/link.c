@@ -44,7 +44,7 @@ int tagsistant_link(const char *from, const char *to)
 	tagsistant_querytree *from_qtree = tagsistant_querytree_new(_from, 0, 1, 0, 0);
 	tagsistant_querytree *to_qtree = tagsistant_querytree_new(to, 0, 0, 1, 0);
 
-	from_qtree->is_external = (from == _from) ? 1 : 0;
+	from_qtree->is_external = (from is _from) ? 1 : 0;
 
 	// -- malformed --
 	if (QTREE_IS_MALFORMED(from_qtree)) TAGSISTANT_ABORT_OPERATION(ENOENT);
@@ -54,7 +54,7 @@ int tagsistant_link(const char *from, const char *to)
 	if (QTREE_POINTS_TO_OBJECT(to_qtree) || (QTREE_IS_STORE(to_qtree) && QTREE_IS_COMPLETE(to_qtree))) {
 
 		// if object_path is null, borrow it from original path
-		if (strlen(to_qtree->object_path) == 0) {
+		if (strlen(to_qtree->object_path) is 0) {
 			dbg('F', LOG_INFO, "Getting object path from %s", from);
 			tagsistant_querytree_set_object_path(to_qtree, g_path_get_basename(from));
 		}
@@ -65,7 +65,7 @@ int tagsistant_link(const char *from, const char *to)
 		if (QTREE_IS_TAGGABLE(to_qtree)) {
 			dbg('F', LOG_INFO, "LINK : Creating %s", to_qtree->object_path);
 			res = tagsistant_force_create_and_tag_object(to_qtree, &tagsistant_errno);
-			if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+			if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
 		} else
 
 		// nothing to do about tags
@@ -87,7 +87,7 @@ int tagsistant_link(const char *from, const char *to)
 	else TAGSISTANT_ABORT_OPERATION(EINVAL);
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("LINK from %s to %s (%s) (%s): %d %d: %s", from, to, to_qtree->full_archive_path, tagsistant_querytree_type(to_qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(from_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		tagsistant_querytree_destroy(to_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);

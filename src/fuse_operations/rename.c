@@ -60,7 +60,7 @@ int tagsistant_rename(const char *from, const char *to)
 	if (QTREE_POINTS_TO_OBJECT(from_qtree)) {
 		if (QTREE_IS_TAGGABLE(from_qtree) && QTREE_IS_TAGGABLE(to_qtree)) {
 			// 1. renaming the same object?
-			if (from_qtree->inode == to_qtree->inode) goto TAGSISTANT_EXIT_OPERATION;
+			if (from_qtree->inode is to_qtree->inode) goto TAGSISTANT_EXIT_OPERATION;
 
 			// 2. preserve original inode
 			tagsistant_querytree_set_inode(to_qtree, from_qtree->inode);
@@ -160,7 +160,7 @@ TAGSISTANT_EXIT_OPERATION:
 	// reset to_qtree->dbi
 	if (to_qtree) to_qtree->dbi = tmp_dbi;
 
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("RENAME %s (%s) to %s (%s): %d %d: %s", from, tagsistant_querytree_type(from_qtree), to, tagsistant_querytree_type(to_qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(from_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		tagsistant_querytree_destroy(to_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);

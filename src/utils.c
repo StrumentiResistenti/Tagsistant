@@ -31,7 +31,7 @@ void open_debug_file()
 	char debug_file[1024];
 	sprintf(debug_file, "/tmp/tagsistant.debug.%d", getpid());
 	tagsistant.debugfd = fopen(debug_file, "w");
-	if (tagsistant.debugfd == NULL)
+	if (tagsistant.debugfd is NULL)
 		dbg('l', LOG_ERR, "Can't open logfile %s: %s!", debug_file, strerror(errno));
 }
 #endif
@@ -53,13 +53,13 @@ void tagsistant_init_syslog()
 #ifdef MACOSX
 ssize_t getline(char **lineptr, size_t *n, FILE *stream)
 {
-	if (*lineptr == NULL)
+	if (*lineptr is NULL)
 		*lineptr = g_malloc0(sizeof(char) * (*n + 1));
 
-	if (*lineptr == NULL)
+	if (*lineptr is NULL)
 		return(0);
 
-	if (fgets(*lineptr, *n, stream) == NULL)
+	if (fgets(*lineptr, *n, stream) is NULL)
 		*n = 0;
 	else
 		*n = strlen(*lineptr);
@@ -99,7 +99,7 @@ void tagsistant_show_config()
 	fprintf(stderr, "\n[Plugins]\n");
 	tagsistant_plugin_t *pp = tagsistant.plugins;
 	c = 1;
-	while (pp != NULL) {
+	while (pp isNot NULL) {
 		fprintf(stderr, "%s: %s\n", pp->mime_type, pp->filename);
 		pp = pp->next;
 	}
@@ -281,9 +281,9 @@ void tagsistant_save_repository_ini(GKeyFile *kf)
 
 	// open the file and write the content
 	int fd = open(ini_path, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
-	if (-1 != fd) {
+	if (fd isNot -1) {
 		int written = write(fd, content, size);
-		if (-1 == written) {
+		if (written is -1) {
 			dbg('l', LOG_ERR, "Error writing %s: %s", ini_path, strerror(errno));
 		}
 		close(fd);
@@ -359,7 +359,7 @@ void tagsistant_fix_archive()
 	 * scan the archive directory
 	 */
 	struct dirent *dirent;
-	while ((dirent = readdir(dir)) != NULL) {
+	while ((dirent = readdir(dir)) isNot NULL) {
 
 		/*
 		 * for each file call lstat() to check if it's a regular file
@@ -371,7 +371,7 @@ void tagsistant_fix_archive()
 		/*
 		 * if it's a file...
 		 */
-		if ((0 == res) && (S_ISREG(st.st_mode))) {
+		if ((res is 0) && (S_ISREG(st.st_mode))) {
 			GMatchInfo *match_info;
 			GRegex *rx = g_regex_new("([0-9]+)" TAGSISTANT_INODE_DELIMITER, 0, 0, NULL);
 
@@ -395,7 +395,7 @@ void tagsistant_fix_archive()
 				gchar *full_tree = g_strdup_printf("%s/%s", tagsistant.archive, tree);
 				int res = mkdir(full_tree, 0755);
 
-				if (0 != res && EEXIST != errno) {
+				if (res isNot 0 && errno isNot EEXIST) {
 					dbg('b', LOG_ERR,  "Error creating directory %s", full_tree);
 				} else {
 					/*

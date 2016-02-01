@@ -73,24 +73,24 @@ void tagsistant_reasoner_init()
  * @param value the value of the triple tag
  */
 #define dont_tagsistant_and_node_match(and, T) (\
-	(and->tag && (g_strcmp0(and->tag, T->tag) == 0)) || \
-	(and->namespace && (g_strcmp0(and->namespace, T->namespace) == 0) && \
-	(g_strcmp0(and->key, T->key) == 0) && (g_strcmp0(and->value, T->value) == 0)))
+	(and->tag && (g_strcmp0(and->tag, T->tag) is 0)) || \
+	(and->namespace && (g_strcmp0(and->namespace, T->namespace) is 0) && \
+	(g_strcmp0(and->key, T->key) is 0) && (g_strcmp0(and->value, T->value) is 0)))
 
 int tagsistant_and_node_match(qtree_and_node *and, tagsistant_tag *T)
 {
-	if (T->tag_id == and->tag_id) return (1);
+	if (T->tag_id is and->tag_id) return (1);
 
 #if 0
 	//
 	// Perché qui la comparazione di "prova2" e "prova5" è vera?????
 	//
-	if (and->tag && (strcmp(and->tag, T->tag) == 0)) {
+	if (and->tag && (strcmp(and->tag, T->tag) is 0)) {
 		return (1);
 	}
 
-	if (and->namespace && (strcmp(and->namespace, T->namespace) == 0) &&
-		(strcmp(and->key, T->key) == 0) && (strcmp(and->value, T->value) == 0)) {
+	if (and->namespace && (strcmp(and->namespace, T->namespace) is 0) &&
+		(strcmp(and->key, T->key) is 0) && (strcmp(and->value, T->value) is 0)) {
 		return (1);
 	}
 #endif
@@ -200,7 +200,7 @@ static int tagsistant_add_reasoned_tag_callback(void *_reasoning, dbi_result res
 	}
 
 	/* add the tag */
-	if (-1 == tagsistant_add_reasoned_tag(T, reasoning)) {
+	if (tagsistant_add_reasoned_tag(T, reasoning) is -1) {
 		dbg('r', LOG_ERR, "Error adding reasoned tag (%s, %s, %s)", T->namespace, T->key, T->value);
 		g_free(T);
 		return (1);
