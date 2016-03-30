@@ -31,7 +31,7 @@ int tagsistant_flush(const char *path, struct fuse_file_info *fi)
 	(void) fi;
 
 	int res = 0, tagsistant_errno = 0, do_deduplicate = 0;
-    gchar *deduplicate = NULL;
+	const gchar *deduplicate = NULL;
 
 	TAGSISTANT_START("FLUSH on %s", path);
 
@@ -52,7 +52,7 @@ int tagsistant_flush(const char *path, struct fuse_file_info *fi)
 
 		if (do_deduplicate) {
 			dbg('2', LOG_INFO, "Deduplicating %s", path);
-			deduplicate = g_strdup(path);
+			deduplicate = path; // was g_strdup(path);
 		} else {
 			dbg('2', LOG_INFO, "Skipping deduplication for %s", path);
 		}
@@ -65,7 +65,7 @@ int tagsistant_flush(const char *path, struct fuse_file_info *fi)
 	}
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("FLUSH on %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		if (do_deduplicate) tagsistant_deduplicate(deduplicate);

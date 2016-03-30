@@ -40,7 +40,7 @@ int tagsistant_plugin_init()
 }
 
 /* exported processor function */
-int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
+int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS], int keyword_counter)
 {
 	/* default tagging */
 	tagsistant_sql_tag_object(qtree->dbi, "document", NULL, NULL, qtree->inode);
@@ -48,7 +48,7 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 	tagsistant_sql_tag_object(qtree->dbi, "html", NULL, NULL, qtree->inode);
 
 	/* apply regular expressions to document content */
-	tagsistant_plugin_iterator(qtree, "document:", keywords, rx);
+	tagsistant_plugin_iterator(qtree, "document:", keywords, keyword_counter, rx);
 
 	return(TP_STOP);
 }

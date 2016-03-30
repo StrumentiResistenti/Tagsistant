@@ -43,23 +43,23 @@ static int tagsistant_add_entry_to_dir(void *filler_ptr, dbi_result result)
 	const char *dir = dbi_result_get_string_idx(result, 1);
 
 	/* this must be the last value, just exit */
-	if (dir == NULL) return(0);
+	if (dir is NULL) return(0);
 
 	/*
 	 * zero-length values can be returned while listing triple tags
 	 * we must suppress them, but returning 1, to prevent the callback
 	 * from exiting its cycle
 	 */
-	if (strlen(dir) == 0) return (1);
+	if (strlen(dir) is 0) return (1);
 
 	/* check if this tag has been already listed inside the path */
 	qtree_or_node *ptx = ufs->qtree->tree;
 	if (ptx) {
-		while (NULL != ptx->next) ptx = ptx->next; // last OR section
+		while (ptx->next isNot NULL) ptx = ptx->next; // last OR section
 
 		qtree_and_node *and_t = ptx->and_set;
-		while (NULL != and_t) {
-			if (g_strcmp0(and_t->tag, dir) == 0) {
+		while (and_t isNot NULL) {
+			if (g_strcmp0(and_t->tag, dir) is 0) {
 				return(0);
 			}
 			and_t = and_t->next;
@@ -91,7 +91,7 @@ static int tagsistant_readdir_on_store_filler(gchar *name, GList *fh_list, struc
 
 	if (!fh_list) return (0);
 
-	if (NULL == fh_list) return (0);
+	if (fh_list is NULL) return (0);
 
 	if (!(fh_list->next)) {
 		// just add the filename
@@ -258,10 +258,8 @@ int tagsistant_readdir_on_store(
 			filler(buf, "error", NULL, 0);
 		} else {
 			/* build the filetree */
-			GHashTable *hash_table = tagsistant_rds_new(qtree, is_all_path);
-			g_hash_table_foreach(hash_table, (GHFunc) tagsistant_readdir_on_store_filler, ufs);
-			g_hash_table_foreach(hash_table, (GHFunc) tagsistant_rds_destroy_value_list, NULL);
-			g_hash_table_destroy(hash_table);
+			tagsistant_rds *rds = tagsistant_rds_new_or_lookup(qtree);
+			g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_readdir_on_store_filler, ufs);
 		}
 	} else {
 
@@ -283,7 +281,7 @@ int tagsistant_readdir_on_store(
 		if (is_all_path) {
 			// OK
 
-		} else if (qtree->value) {
+		} else if (qtree->value && strlen(qtree->value)) {
 			filler(buf, "ALL", NULL, 0);
 			// tagsistant_query("select distinct tagname from tags", qtree->dbi, tagsistant_add_entry_to_dir, ufs);
 
@@ -321,13 +319,13 @@ int tagsistant_readdir_on_store(
 				qtree->dbi, tagsistant_add_entry_to_dir, ufs,
 				qtree->namespace, qtree->key);
 
-		} else if (qtree->key) {
+		} else if (qtree->key && strlen(qtree->key)) {
 			filler(buf, TAGSISTANT_EQUALS_TO_OPERATOR, NULL, 0);
 			filler(buf, TAGSISTANT_CONTAINS_OPERATOR, NULL, 0);
 			filler(buf, TAGSISTANT_GREATER_THAN_OPERATOR, NULL, 0);
 			filler(buf, TAGSISTANT_SMALLER_THAN_OPERATOR, NULL, 0);
 
-		} else if (qtree->namespace) {
+		} else if (qtree->namespace && strlen(qtree->namespace)) {
 			tagsistant_query(
 				"select distinct `key` from tags where tagname = \"%s\"",
 				qtree->dbi, tagsistant_add_entry_to_dir, ufs,
@@ -384,14 +382,14 @@ int tagsistant_readdir_on_object(
 	(void) path;
 
 	DIR *dp = opendir(qtree->full_archive_path);
-	if (NULL == dp) {
+	if (dp is NULL) {
 		*tagsistant_errno = errno;
 		dbg('F', LOG_ERR, "Unable to readdir(%s)", qtree->full_archive_path);
 		return (-1);
 	}
 
 	struct dirent *de;
-	while ((de = readdir(dp)) != NULL) {
+	while ((de = readdir(dp)) isNot NULL) {
 		// dbg(LOG_INFO, "Adding entry %s", de->d_name);
 		struct stat st;
 		memset(&st, 0, sizeof(st));
@@ -419,7 +417,7 @@ int tagsistant_readdir_on_relations(
 	filler(buf, "..", NULL, 0);
 
 	struct tagsistant_use_filler_struct *ufs = g_new0(struct tagsistant_use_filler_struct, 1);
-	if (ufs == NULL) {
+	if (ufs is NULL) {
 		dbg('F', LOG_ERR, "Error allocating memory");
 		*tagsistant_errno = EBADF;
 		return (-1);
@@ -436,7 +434,7 @@ int tagsistant_readdir_on_relations(
 		// nothing
 	} else if (qtree->related_key) {
 
-		if (qtree->namespace)
+		if (qtree->namespace && strlen(qtree->namespace))
 			condition1 = g_strdup_printf("(tags1.tagname = \"%s\" and tags1.`key` = \"%s\" and tags1.value = \"%s\") ", qtree->namespace, qtree->key, qtree->value);
 		else
 			condition1 = g_strdup_printf("(tags1.tagname = \"%s\") ", qtree->first_tag);
@@ -457,7 +455,7 @@ int tagsistant_readdir_on_relations(
 
 	} else if (qtree->related_namespace) {
 
-		if (qtree->namespace)
+		if (qtree->namespace && strlen(qtree->namespace))
 			condition1 = g_strdup_printf("(tags1.tagname = \"%s\" and tags1.`key` = \"%s\" and tags1.value = \"%s\") ", qtree->namespace, qtree->key, qtree->value);
 		else
 			condition1 = g_strdup_printf("(tags1.tagname = \"%s\") ", qtree->first_tag);
@@ -478,7 +476,7 @@ int tagsistant_readdir_on_relations(
 
 	} else if (qtree->relation) {
 
-		if (qtree->namespace)
+		if (qtree->namespace && strlen(qtree->namespace))
 			condition1 = g_strdup_printf("(tags1.tagname = \"%s\" and tags1.`key` = \"%s\" and tags1.value = \"%s\") ", qtree->namespace, qtree->key, qtree->value);
 		else
 			condition1 = g_strdup_printf("(tags1.tagname = \"%s\") ", qtree->first_tag);
@@ -555,7 +553,7 @@ int tagsistant_readdir_on_tags(
 	filler(buf, "..", NULL, 0);
 
 	struct tagsistant_use_filler_struct *ufs = g_new0(struct tagsistant_use_filler_struct, 1);
-	if (ufs == NULL) {
+	if (ufs is NULL) {
 		dbg('F', LOG_ERR, "Error allocating memory");
 		*tagsistant_errno = EBADF;
 		return (-1);
@@ -568,11 +566,11 @@ int tagsistant_readdir_on_tags(
 
 	if (qtree->first_tag) {
 		// nothing
-	} else if (qtree->value) {
+	} else if (qtree->value && strlen(qtree->value)) {
 		// nothing
-	} else if (qtree->key) {
+	} else if (qtree->key && strlen(qtree->key)) {
 		tagsistant_query("select distinct value from tags where tagname = \"%s\" and `key` = \"%s\"", qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->namespace, qtree->key);
-	} else if (qtree->namespace) {
+	} else if (qtree->namespace && strlen(qtree->namespace)) {
 		tagsistant_query("select distinct `key` from tags where tagname = \"%s\"", qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->namespace);
 	} else {
 		// list all tags
@@ -631,7 +629,7 @@ int tagsistant_readdir_on_alias(
 	filler(buf, "..", NULL, 0);
 
 	struct tagsistant_use_filler_struct *ufs = g_new0(struct tagsistant_use_filler_struct, 1);
-	if (ufs == NULL) {
+	if (ufs is NULL) {
 		dbg('F', LOG_ERR, "Error allocating memory");
 		*tagsistant_errno = EBADF;
 		return (-1);
@@ -715,7 +713,7 @@ int tagsistant_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_
 	}
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("READDIR on %s (%s): %d %d: %s", path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

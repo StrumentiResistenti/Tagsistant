@@ -107,6 +107,14 @@
 /** the number of RDS (reusable data sets) allowed in the rds table before the GC kicks in */
 #define TAGSISTANT_GC_RDS 50000
 
+/**
+ * Some replacements to standard C construct to avoid common pitfalls
+ * and make the source more readable
+ */
+#define is ==
+#define isNot !=
+#define eq ==
+
 #include "config.h"
 
 #ifndef VERSION
@@ -207,6 +215,7 @@ extern gchar *_dyn_strcat(gchar *original, const gchar *newstring);
  */
 struct tagsistant {
 	gboolean	debug;			/**< debug profile */
+	gboolean	no_autotagging;		/**< disable autotagging */
 	gchar		*debug_flags;	/**< debug flags as a string */
 	gchar 		dbg[128];		/**< debug flags */
 
@@ -264,7 +273,14 @@ extern struct tagsistant tagsistant;
 extern GAsyncQueue *tagsistant_autotag_queue;
 
 /** starts deduplication on a path */
-extern void tagsistant_deduplicate(gchar *path);
+extern void tagsistant_deduplicate(const gchar *path);
+
+/** schedule a tagsistant_querytree for autotagging */
+#if TAGSISTANT_ENABLE_AUTOTAGGING
+extern void tagsistant_schedule_for_autotagging(tagsistant_querytree *qtree);
+#else
+#define tagsistant_schedule_for_autotagging(qtree) {}
+#endif
 
 /**
  * g_free() a symbol only if it's not NULL
@@ -318,13 +334,13 @@ extern int tagsistant_process(gchar *path, gchar *full_archive_path);
 extern void tagsistant_plugin_apply_regex(const tagsistant_querytree *qtree, const char *buf, GMutex *m, GRegex *rx);
 
 // create and tag a new object in one single operation
-#define tagsistant_create_and_tag_object(qtree, errno) tagsistant_inner_create_and_tag_object(qtree, errno, 0);
-#define tagsistant_force_create_and_tag_object(qtree, errno) tagsistant_inner_create_and_tag_object(qtree, errno, 1);
-extern int tagsistant_inner_create_and_tag_object(tagsistant_querytree *qtree, int *tagsistant_errno, int force_create);
+#define		tagsistant_create_and_tag_object(qtree, errno) tagsistant_inner_create_and_tag_object(qtree, errno, 0);
+#define		tagsistant_force_create_and_tag_object(qtree, errno) tagsistant_inner_create_and_tag_object(qtree, errno, 1);
+extern int	tagsistant_inner_create_and_tag_object(tagsistant_querytree *qtree, int *tagsistant_errno, int force_create);
 
 // check if a file ends by the tags-listing suffix (default: .tags)
-extern gboolean tagsistant_is_tags_list_file(tagsistant_querytree *qtree);
-extern gchar *tagsistant_string_tags_list_suffix(tagsistant_querytree *qtree);
+extern gboolean 	tagsistant_is_tags_list_file(tagsistant_querytree *qtree);
+extern gchar *		tagsistant_string_tags_list_suffix(tagsistant_querytree *qtree);
 
 extern void tagsistant_fix_archive();
 
@@ -362,9 +378,31 @@ extern int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gch
 
 extern gchar *tagsistant_get_file_tags(tagsistant_querytree *qtree);
 
-extern GHashTable *tagsistant_rds_new(tagsistant_querytree *qtree, int is_all_path);
-extern void tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data);
-extern void tagsistant_delete_rds_involved(tagsistant_querytree *qtree);
-extern gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree);
-extern gchar *tagsistant_get_rds_id(tagsistant_querytree *qtree, int *materialized);
-extern gchar *tagsistant_get_rds_checksum(tagsistant_querytree *qtree);
+/**
+ * RDS are Reusable Data Sets. Each RDS is build from a querytree.
+ * If materialized, its entries field will list all the objects
+ * matching a query.
+ */
+typedef struct {
+	tagsistant_inode inode;
+	gchar *name;
+} tagsistant_rds_entry;
+
+typedef struct {
+	gchar *checksum;
+	gchar *path;
+	int is_all_path;
+	qtree_or_node *tree;
+	GHashTable *entries;
+} tagsistant_rds;
+
+GHashTable *tagsistant_rds_registry;
+
+extern tagsistant_rds *	tagsistant_rds_new_or_lookup(tagsistant_querytree *qtree);
+extern tagsistant_rds *	tagsistant_rds_new(tagsistant_querytree *qtree);
+extern void				tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data);
+extern void				tagsistant_delete_rds_involved(tagsistant_querytree *qtree);
+extern gboolean			tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi);
+extern gchar *			tagsistant_get_rds_checksum(tagsistant_querytree *qtree);
+extern tagsistant_rds *	tagsistant_rds_lookup(const gchar *checksum);
+extern gboolean			tagsistant_rds_contains_object(gpointer key, gpointer value, gpointer user_data);

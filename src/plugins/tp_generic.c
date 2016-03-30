@@ -36,9 +36,9 @@ int tagsistant_plugin_init()
 }
 
 /* exported processor function */
-int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
+int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS], int keyword_counter)
 {
-	tagsistant_plugin_iterator(qtree, "file:", keywords, rx);
+	tagsistant_plugin_iterator(qtree, "file:", keywords, keyword_counter, rx);
 
 	/* tag by date */
 	const gchar *date = tagsistant_plugin_get_keyword_value("creation date", keywords);

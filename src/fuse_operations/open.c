@@ -62,7 +62,7 @@ int tagsistant_open(const char *path, struct fuse_file_info *fi)
 		res = open(qtree->full_archive_path, fi->flags /*|O_RDONLY */);
 		tagsistant_errno = errno;
 
-		if (-1 != res) {
+		if (res isNot -1) {
 #if TAGSISTANT_ENABLE_FILE_HANDLE_CACHING
 			tagsistant_set_file_handle(fi, res);
 			dbg('F', LOG_INFO, "Caching %" PRIu64 " = open(%s)", fi->fh, path);
@@ -111,7 +111,7 @@ int tagsistant_open(const char *path, struct fuse_file_info *fi)
 	else TAGSISTANT_ABORT_OPERATION(EROFS);
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("OPEN on %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

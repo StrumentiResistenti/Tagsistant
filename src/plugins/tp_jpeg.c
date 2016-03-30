@@ -45,14 +45,14 @@ int tagsistant_plugin_init()
 }
 
 /* exported processor function */
-int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
+int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS], int keyword_counter)
 {
 	/* default tagging */
 	tagsistant_sql_tag_object(qtree->dbi, "image", NULL, NULL, qtree->inode);
 	tagsistant_sql_tag_object(qtree->dbi, "image:", "format", "jpeg", qtree->inode);
 
 	/* applying regular expression */
-	tagsistant_plugin_iterator(qtree, "image:", keywords, rx);
+	tagsistant_plugin_iterator(qtree, "image:", keywords, keyword_counter, rx);
 
 	return(EXCLUDE_OTHER_PLUGINS ? TP_STOP : TP_OK);
 }

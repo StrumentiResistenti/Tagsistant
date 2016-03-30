@@ -173,30 +173,6 @@ gchar *tagsistant_get_rds_checksum(tagsistant_querytree *qtree)
 }
 
 /*
- * Lookup the id of the RDS of a query.
- *
- * @param query the query that generates the RDS
- * @param materialized set to one if the RDS exists
- * @return the RDS id
- */
-gchar *tagsistant_get_rds_id(tagsistant_querytree *qtree, int *materialized)
-{
-	/*
-	 * compute the checksum
-	 */
-	gchar *checksum = tagsistant_get_rds_checksum(qtree);
-
-	/*
-	 * check if the RDS has been materialized
-	 */
-	tagsistant_query(
-		"select 1 from rds where id = \"%s\" and reasoned = %d limit 1",
-		qtree->dbi, tagsistant_return_integer, materialized, checksum, qtree->do_reasoning);
-
-	return (checksum);
-}
-
-/*
  * Append a tag to a sources GString
  *
  * @param sources a GString object containing the source string
@@ -271,15 +247,27 @@ gchar *tagsistant_compute_rds_sources(tagsistant_querytree *qtree)
  * @param qtree the querytree object
  * @return the RDS checksum id
  */
-gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
+gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
 {
+	/*
+	 * If the RDS is an ALL path, just load all the objects
+	 */
+	if (rds->is_all_path) {
+		tagsistant_query(
+			"select objectname, inode from objects",
+			dbi, tagsistant_add_to_fileset, rds->entries);
+
+		return (TRUE);
+	}
+
 	/*
 	 * PHASE 1.
 	 * Build a set of temporary tables containing all the matched objects
 	 *
 	 * Step 1.1. for each qtree_or_node build a temporary table
 	 */
-	qtree_or_node *query = qtree->tree;
+	qtree_or_node *query = rds->tree;
+
 	while (query) {
 		GString *create_base_table = g_string_sized_new(51200);
 		g_string_append_printf(create_base_table,
@@ -305,7 +293,7 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 		/*
 		 * create the table and dispose the statement GString
 		 */
-		tagsistant_query(create_base_table->str, qtree->dbi, NULL, NULL);
+		tagsistant_query(create_base_table->str, dbi, NULL, NULL);
 		g_string_free(create_base_table, TRUE);
 
 		/*
@@ -344,7 +332,7 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 			/*
 			 * apply the query and dispose the statement GString
 			 */
-			tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
+			tagsistant_query(cross_tag->str, dbi, NULL, NULL);
 			g_string_free(cross_tag, TRUE);
 
 			next = next->next;
@@ -388,7 +376,7 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 				/*
 				 * apply the query and dispose the statement GString
 				 */
-				tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
+				tagsistant_query(cross_tag->str, dbi, NULL, NULL);
 				g_string_free(cross_tag, TRUE);
 
 				negated = negated->negated;
@@ -404,37 +392,26 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 	}
 
 	/*
-	 * PHASE 2.
-	 *
-	 * Create a new RDS
-	 */
-	gchar *checksum = tagsistant_get_rds_checksum(qtree);
-	gchar *sources = tagsistant_compute_rds_sources(qtree);
-
-	/*
 	 * format the main statement which reads from the temporary
 	 * tables using UNION and ordering the files
 	 */
 	GString *view_statement = g_string_sized_new(10240);
 
-	query = qtree->tree;
+	query = rds->tree;
 
 	while (query) {
 		switch (tagsistant.sql_database_driver) {
 			case TAGSISTANT_DBI_SQLITE_BACKEND:
 				g_string_append_printf(view_statement,
-					"select \"%s\", %d, inode, objectname, \"%s\", datetime(\"now\") from tv%.16" PRIxPTR,
-					checksum, qtree->do_reasoning, sources, (uintptr_t) query);
+					"select inode, objectname from tv%.16" PRIxPTR, (uintptr_t) query);
 				break;
 			case TAGSISTANT_DBI_MYSQL_BACKEND:
 				g_string_append_printf(view_statement,
-					"select \"%s\", %d, inode, objectname, \"%s\", now() from tv%.16" PRIxPTR,
-					checksum, qtree->do_reasoning, sources, (uintptr_t) query);
+					"select inode, objectname from tv%.16" PRIxPTR, (uintptr_t) query);
 				break;
 			default:
 				g_string_append_printf(view_statement,
-					"select \"%s\", %d, inode, objectname, \"%s\", \"\" from tv%.16" PRIxPTR,
-					checksum, qtree->do_reasoning, sources, (uintptr_t) query);
+					"select inode, objectname from tv%.16" PRIxPTR, (uintptr_t) query);
 				break;
 		}
 
@@ -445,28 +422,21 @@ gchar *tagsistant_materialize_rds(tagsistant_querytree *qtree)
 	/*
 	 * Load all the files in the RDS
 	 */
-	tagsistant_query(
-		"insert into rds %s",
-		qtree->dbi, NULL, NULL, view_statement->str);
-
-	/*
-	 * free the SQL statement and any other intermediate string
-	 */
+	tagsistant_query(view_statement->str, dbi, tagsistant_add_to_fileset, rds->entries);
 	g_string_free(view_statement, TRUE);
-	g_free(sources);
 
 	/*
 	 * PHASE 3.
 	 *
 	 * drop the temporary tables
 	 */
-	query = qtree->tree;
+	query = rds->tree;
 	while (query) {
-		tagsistant_query("drop table tv%.16" PRIxPTR, qtree->dbi, NULL, NULL, (uintptr_t) query);
+		tagsistant_query("drop table tv%.16" PRIxPTR, dbi, NULL, NULL, (uintptr_t) query);
 		query = query->next;
 	}
 
-	return (checksum);
+	return (TRUE);
 }
 
 /**
@@ -491,6 +461,8 @@ tagsistant_rds_delete_oldest(tagsistant_querytree *qtree)
 void
 tagsistant_rds_garbage_collector(tagsistant_querytree *qtree)
 {
+	(void) qtree;
+#if 0
 	int declared_rds = 0;
 	tagsistant_query("select count(distinct id) from rds", qtree->dbi, tagsistant_return_integer, &declared_rds);
 
@@ -505,6 +477,26 @@ tagsistant_rds_garbage_collector(tagsistant_querytree *qtree)
 	if (stored_tuples > TAGSISTANT_GC_TUPLES) {
 		tagsistant_rds_delete_oldest(qtree);
 	}
+#endif
+}
+
+/**
+ * Returns TRUE if the ->name field of the tagsistant_rds_entry
+ * passed as value equals the check name passed as user_data
+ *
+ * @param key unused
+ * @param value a gpointer to a tagsistant_rds_entry struct
+ * @param user_data a gpointer to a string with the name to match
+ */
+gboolean
+tagsistant_rds_contains_object(gpointer key, gpointer value, gpointer user_data)
+{
+	(void) key;
+
+	tagsistant_rds_entry *e = (tagsistant_rds_entry *) value;
+	gchar *match_name = (gchar *) user_data;
+
+	return (strcmp(e->name, match_name) is 0 ? TRUE : FALSE);
 }
 
 /**
@@ -521,10 +513,10 @@ tagsistant_rds_garbage_collector(tagsistant_querytree *qtree)
  *
  * @param query the qtree_or_node query structure to be resolved
  * @param conn a libDBI dbi_conn handle
- * @param is_all_path is true when the path includes the ALL/ tag
  * @return a pointer to a GHashTable of tagsistant_file_handle objects
  */
-GHashTable *tagsistant_rds_new(tagsistant_querytree *qtree, int is_all_path)
+tagsistant_rds *
+tagsistant_rds_new(tagsistant_querytree *qtree)
 {
 	/*
 	 * Calls the garbage collector
@@ -532,54 +524,70 @@ GHashTable *tagsistant_rds_new(tagsistant_querytree *qtree, int is_all_path)
 	tagsistant_rds_garbage_collector(qtree);
 
 	/*
-	 * If the query contains the ALL meta-tag, just select all the available
-	 * objects and return them
-	 */
-	if (is_all_path) {
-		GHashTable *file_hash = g_hash_table_new(g_str_hash, g_str_equal);
-
-		tagsistant_query(
-			"select objectname, inode from objects",
-			qtree->dbi, tagsistant_add_to_fileset, file_hash);
-
-		return(file_hash);
-	}
-
-	/*
 	 * a NULL query can't be processed
 	 */
 	if (!qtree) {
 		dbg('f', LOG_ERR, "NULL tagsistant_querytree object provided to %s", __func__);
-		return(NULL);
+		return (NULL);
 	}
 
-	qtree_or_node *query = qtree->tree;
-
-	if (!query) {
+	if (!qtree->tree) {
 		dbg('f', LOG_ERR, "NULL qtree_or_node object provided to %s", __func__);
 		return(NULL);
 	}
 
-	/*
-	 * Get the RDS id
-	 */
-	int materialized = 0;
-	gchar *rds_id = tagsistant_get_rds_id(qtree, &materialized);
+	int is_all_path = is_all_path(qtree->full_path);
 
 	/*
-	 * If the rds_id is not zero, load the objects from the RDS and return them
+	 * Allocate the RDS structure
 	 */
-	if (!materialized) {
-		rds_id = tagsistant_materialize_rds(qtree);
+	tagsistant_rds *rds = g_new0(tagsistant_rds, 1);
+	if (!rds) {
+		dbg('f', LOG_ERR, "Error allocating memory for RDS: %s", strerror(errno));
+		return (NULL);
 	}
 
-	GHashTable *file_hash = g_hash_table_new(g_str_hash, g_str_equal);
+	rds->checksum = tagsistant_get_rds_checksum(qtree);
+	rds->path = g_strdup(qtree->expanded_full_path);
+	rds->tree = tagsistant_duplicate_tree(qtree->tree);
+	rds->is_all_path = is_all_path;
 
-	tagsistant_query(
-		"select objectname, inode from rds where id = \"%s\" and reasoned = %d",
-		qtree->dbi, tagsistant_add_to_fileset, file_hash, rds_id, qtree->do_reasoning);
+	/*
+	 * Materialize the RDS
+	 */
+	if (!tagsistant_materialize_rds(rds, qtree->dbi)) {
+		dbg('f', LOG_ERR, "Error materializing RDS");
+		// TODO: destroy the RDS...
+		return (NULL);
+	}
 
-	return (file_hash);
+	/*
+	 * TODO: cache the new RDS
+	 */
+
+	return (rds);
+}
+
+/**
+ * Lookup an RDS in the RDS registry
+ *
+ * @param checksum the RDS checksum to lookup
+ * @return the RDS, if found, NULL otherwise
+ */
+tagsistant_rds *
+tagsistant_rds_lookup(const gchar *checksum)
+{
+	if (checksum is NULL) return (NULL);
+	return (g_hash_table_lookup(tagsistant_rds_registry, checksum));
+}
+
+tagsistant_rds *
+tagsistant_rds_new_or_lookup(tagsistant_querytree *qtree)
+{
+	tagsistant_rds *rds = tagsistant_rds_lookup(tagsistant_get_rds_checksum(qtree));
+	if (rds is NULL) rds = tagsistant_rds_new(qtree);
+
+	return (rds);
 }
 
 /**

@@ -46,9 +46,9 @@ int tagsistant_plugin_init()
 }
 
 /* exported processor function */
-int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
+int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS], int keyword_counter)
 {
-	tagsistant_plugin_iterator(qtree, "photo:", keywords, rx);
+	tagsistant_plugin_iterator(qtree, "photo:", keywords, keyword_counter, rx);
 
 	return(TP_OK);
 }

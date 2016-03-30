@@ -45,13 +45,13 @@ int tagsistant_driver_is_available(const char *driver_name)
 
 	dbg('b', LOG_INFO, "Available drivers:");
 #if TAGSISTANT_REENTRANT_DBI
-	while ((driver = dbi_driver_list_r(driver, tagsistant.dbi_instance)) != NULL) {
+	while ((driver = dbi_driver_list_r(driver, tagsistant.dbi_instance)) isNot NULL) {
 #else
-	while ((driver = dbi_driver_list(driver)) != NULL) {
+	while ((driver = dbi_driver_list(driver)) isNot NULL) {
 #endif
 		counter++;
 		dbg('b', LOG_INFO, "  Driver #%d: %s - %s", counter, dbi_driver_get_name(driver), dbi_driver_get_filename(driver));
-		if (g_strcmp0(dbi_driver_get_name(driver), driver_name) == 0) {
+		if (g_strcmp0(dbi_driver_get_name(driver), driver_name) is 0) {
 			driver_found = 1;
 		}
 	}
@@ -115,7 +115,7 @@ void tagsistant_db_init()
 	dboptions.backend = TAGSISTANT_NULL_BACKEND;
 
 	// if no database option has been passed, use default SQLite3
-	if (strlen(tagsistant.dboptions) == 0) {
+	if (strlen(tagsistant.dboptions) is 0) {
 		tagsistant.dboptions = g_strdup("sqlite3::::");
 		dboptions.backend_name = g_strdup("sqlite3");
 		dboptions.backend = TAGSISTANT_DBI_SQLITE_BACKEND;
@@ -129,13 +129,13 @@ void tagsistant_db_init()
 
 	// set failsafe DB options
 	if (_dboptions[0]) {
-		if (strcmp(_dboptions[0], "sqlite3") == 0) {
+		if (strcmp(_dboptions[0], "sqlite3") is 0) {
 
 			tagsistant.sql_database_driver = TAGSISTANT_DBI_SQLITE_BACKEND;
 			dboptions.backend = TAGSISTANT_DBI_SQLITE_BACKEND;
 			dboptions.backend_name = g_strdup("sqlite3");
 
-		} else if (strcmp(_dboptions[0], "mysql") == 0) {
+		} else if (strcmp(_dboptions[0], "mysql") is 0) {
 
 			tagsistant.sql_database_driver = TAGSISTANT_DBI_MYSQL_BACKEND;
 			dboptions.backend = TAGSISTANT_DBI_MYSQL_BACKEND;
@@ -144,7 +144,7 @@ void tagsistant_db_init()
 		}
 	}
 
-	if (TAGSISTANT_DBI_MYSQL_BACKEND == dboptions.backend) {
+	if (dboptions.backend is TAGSISTANT_DBI_MYSQL_BACKEND) {
 		if (_dboptions[1] && strlen(_dboptions[1])) {
 			dboptions.host = g_strdup(_dboptions[1]);
 
@@ -189,7 +189,7 @@ void tagsistant_db_init()
 	const char *option = NULL;
 	int counter = 0;
 	dbg('b', LOG_INFO, "Connection settings: ");
-	while ((option = dbi_conn_get_option_list(tagsistant_dbi_conn, option))	!= NULL ) {
+	while ((option = dbi_conn_get_option_list(tagsistant_dbi_conn, option))	isNot NULL ) {
 		counter++;
 		dbg('b', LOG_INFO, "  Option #%d: %s = %s", counter, option, dbi_conn_get_option(tagsistant_dbi_conn, option));
 	}
@@ -260,7 +260,7 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 
 	if (!dbi) {
 		// initialize DBI drivers
-		if (TAGSISTANT_DBI_MYSQL_BACKEND == dboptions.backend) {
+		if (dboptions.backend is TAGSISTANT_DBI_MYSQL_BACKEND) {
 			if (!tagsistant_driver_is_available("mysql")) {
 				fprintf(stderr, "MySQL driver not installed\n");
 				dbg('s', LOG_ERR, "MySQL driver not installed");
@@ -276,7 +276,7 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 #else
 			dbi = dbi_conn_new("mysql");
 #endif
-			if (NULL == dbi) {
+			if (dbi is NULL) {
 				dbg('s', LOG_ERR, "Error creating MySQL connection");
 				exit (1);
 			}
@@ -288,7 +288,7 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 			dbi_conn_set_option(dbi, "password", dboptions.password);
 			dbi_conn_set_option(dbi, "encoding", "UTF-8");
 
-		} else if (TAGSISTANT_DBI_SQLITE_BACKEND == dboptions.backend) {
+		} else if (dboptions.backend is TAGSISTANT_DBI_SQLITE_BACKEND) {
 			if (!tagsistant_driver_is_available("sqlite3")) {
 				fprintf(stderr, "SQLite3 driver not installed\n");
 				dbg('s', LOG_ERR, "SQLite3 driver not installed");
@@ -301,7 +301,7 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 #else
 			dbi = dbi_conn_new("sqlite3");
 #endif
-			if (NULL == dbi) {
+			if (dbi is NULL) {
 				dbg('s', LOG_ERR, "Error connecting to SQLite3");
 				exit (1);
 			}
@@ -939,7 +939,7 @@ int tagsistant_real_query(
 	va_start(ap, firstarg);
 
 	/* check if connection has been created */
-	if (NULL == dbi) {
+	if (dbi is NULL) {
 		dbg('s', LOG_ERR, "ERROR! DBI connection was not initialized!");
 		return(0);
 	}
@@ -963,7 +963,7 @@ int tagsistant_real_query(
 
 	/* format the statement */
 	gchar *statement = g_strdup_vprintf(escaped_format, ap);
-	if (NULL == statement) {
+	if (statement is NULL) {
 #if TAGSISTANT_USE_QUERY_MUTEX
 		/* lock the connection mutex */
 		g_mutex_unlock(&tagsistant_query_mutex);
@@ -1023,24 +1023,22 @@ int tagsistant_real_query(
  */
 tagsistant_inode tagsistant_last_insert_id(dbi_conn conn)
 {
-	return(dbi_conn_sequence_last(conn, NULL));
-
-#if 0
-	// -------- alternative version -----------------------------------------------
-
+#if TAGSISTANT_USE_INTERNAL_SEQUENCES
 	tagsistant_inode inode = 0;
 
 	switch (tagsistant.sql_database_driver) {
 		case TAGSISTANT_DBI_SQLITE_BACKEND:
-			tagsistant_query("SELECT last_insert_rowid() ", conn, tagsistant_return_integer, &inode);
+			tagsistant_query("SELECT last_insert_rowid()", conn, tagsistant_return_integer, &inode);
 			break;
 
 		case TAGSISTANT_DBI_MYSQL_BACKEND:
-			tagsistant_query("SELECT last_insert_id() ", conn, tagsistant_return_integer, &inode);
+			tagsistant_query("SELECT last_insert_id()", conn, tagsistant_return_integer, &inode);
 			break;
 	}
 
 	return (inode);
+#else
+	return(dbi_conn_sequence_last(conn, NULL));
 #endif
 }
 
@@ -1057,7 +1055,7 @@ int tagsistant_return_integer(void *return_integer, dbi_result result)
 	*buffer = 0;
 
 	unsigned int type = dbi_result_get_field_type_idx(result, 1);
-	if (type == DBI_TYPE_INTEGER) {
+	if (type is DBI_TYPE_INTEGER) {
 		unsigned int size = dbi_result_get_field_attribs_idx(result, 1);
 		unsigned int is_unsigned = size & DBI_INTEGER_UNSIGNED;
 		size = size & DBI_INTEGER_SIZEMASK;
@@ -1088,9 +1086,9 @@ int tagsistant_return_integer(void *return_integer, dbi_result result)
 					*buffer = dbi_result_get_char_idx(result, 1);
 				break;
 		}
-	} else if (type == DBI_TYPE_DECIMAL) {
+	} else if (type is DBI_TYPE_DECIMAL) {
 		return (0);
-	} else if (type == DBI_TYPE_STRING) {
+	} else if (type is DBI_TYPE_STRING) {
 		const gchar *int_string = dbi_result_get_string_idx(result, 1);
 		*buffer = atoi(int_string);
 		dbg('s', LOG_INFO, "tagsistant_return_integer called on non integer field");

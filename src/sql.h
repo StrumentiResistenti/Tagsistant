@@ -56,13 +56,13 @@ extern int connections;
 
 /* the real code behind the previous macro */
 extern int tagsistant_real_query(
-		dbi_conn conn,
-		const char *format,
-		int (*callback)(void *, dbi_result),
-		char *file,
-		int line,
-		void *firstarg,
-		...);
+	dbi_conn conn,
+	const char *format,
+	int (*callback)(void *, dbi_result),
+	char *file,
+	int line,
+	void *firstarg,
+	...);
 
 /** callback to return a string */
 extern int tagsistant_return_string(void *return_string, dbi_result result);
@@ -73,8 +73,14 @@ extern int tagsistant_return_integer(void *return_integer, dbi_result result);
 extern void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_locked);
 
 /**
- * transactions are started by default in tagsistant_db_connection()
- * and must be closed calling one of the following macros
+ * if true, use backend calls to fetch last insert row id,
+ * otherwise use libdbi dbi_conn_sequence_last()
+ */
+#define TAGSISTANT_USE_INTERNAL_SEQUENCES 1
+
+/**
+ * if true, start transactions using backend calls, otherwise use
+ * libdbi dbi_conn_transaction_begin()
  */
 #define TAGSISTANT_USE_INTERNAL_TRANSACTIONS 1
 
@@ -85,7 +91,6 @@ extern void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_lo
 #	define tagsistant_commit_transaction(dbi_conn) dbi_conn_transaction_commit(dbi_conn)
 #	define tagsistant_rollback_transaction(dbi_conn) dbi_conn_transaction_rollback(dbi_conn)
 #endif /* TAGSISTANT_USE_INTERNAL_TRANSACTIONS */
-
 
 /***************\
  * SQL QUERIES *

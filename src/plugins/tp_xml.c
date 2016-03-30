@@ -38,13 +38,13 @@ int tagsistant_plugin_init()
 }
 
 /* exported processor function */
-int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
+int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS], int keyword_counter)
 {
 	/* default tagging */
 	tagsistant_sql_tag_object(qtree->dbi, "document", NULL, NULL, qtree->inode);
 
 	/* applying regular expression */
-	tagsistant_plugin_iterator(qtree, "document:", keywords, rx);
+	tagsistant_plugin_iterator(qtree, "document:", keywords, keyword_counter, rx);
 
 	return(TP_STOP);
 }

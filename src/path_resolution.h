@@ -411,6 +411,10 @@ extern gchar *					tagsistant_get_reversed_inode_tree(tagsistant_inode inode);
 extern int						tagsistant_reasoner_inner(tagsistant_reasoning *reasoning, int do_caching);
 extern void						tagsistant_invalidate_reasoning_cache(gchar *tag);
 
+// query tree functions
+extern qtree_and_node *			tagsistant_duplicate_and_set(qtree_and_node *orig);
+extern qtree_or_node *			tagsistant_duplicate_tree(qtree_or_node *orig);
+
 /**
  * ERROR MESSAGES
  **/

@@ -62,7 +62,7 @@ typedef struct tagsistant_plugin {
 	 *   by other plugins is allowed) or 2 on successful processing (no further
 	 *   processing required).
 	 */
-	int (*processor)(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS]);
+	int (*processor)(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS], int keyword_counter);
 
 	/**
 	 * hook to g_free allocated resources
@@ -77,6 +77,7 @@ extern void tagsistant_plugin_iterator(
 	const tagsistant_querytree *qtree,
 	const gchar *namespace,
 	tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS],
+	int keyword_counter,
 	GRegex *regex);
 
 extern const gchar *tagsistant_plugin_get_keyword_value(

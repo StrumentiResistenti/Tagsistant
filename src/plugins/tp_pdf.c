@@ -40,13 +40,13 @@ int tagsistant_plugin_init()
 }
 
 /* exported processor function */
-int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
+int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS], int keyword_counter)
 {
 	/* default tagging */
 	tagsistant_sql_tag_object(qtree->dbi, "document", NULL, NULL, qtree->inode);
 
 	/* apply regular expressions to document content */
-	tagsistant_plugin_iterator(qtree, "PDF:", keywords, rx);
+	tagsistant_plugin_iterator(qtree, "PDF:", keywords, keyword_counter, rx);
 
 	// dbg('p', LOG_INFO, "Tagged file %s as PDF", qtree->object_path);
 

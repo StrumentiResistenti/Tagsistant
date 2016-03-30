@@ -79,7 +79,7 @@ int tagsistant_read(const char *path, char *buf, size_t size, off_t offset, stru
 //			fprintf(stderr, "Trying a read on FD %lu\n", fi->fh);
 		}
 
-		if ((-1 == res) || (0 == fh)) {
+		if ((res is -1) || (fh is 0)) {
 			if (fh) close(fh);
 			fh = open(qtree->full_archive_path, fi->flags|O_RDONLY);
 //			fprintf(stderr, "Re-trying a read on FD %lu\n", fi->fh);
@@ -177,7 +177,7 @@ int tagsistant_read(const char *path, char *buf, size_t size, off_t offset, stru
 	else TAGSISTANT_ABORT_OPERATION(EINVAL);
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("READ %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

@@ -25,7 +25,7 @@
  * PLUGIN SUPPORT *
 \******************/
 
-#if TAGSISTANT_EXTRACTOR == 5
+#if TAGSISTANT_EXTRACTOR is 5
 static EXTRACTOR_ExtractorList *elist;
 #else
 static struct EXTRACTOR_PluginList *plist;
@@ -54,11 +54,12 @@ GMutex tagsistant_processor_mutex;
 int tagsistant_run_processor(
 	tagsistant_plugin_t *plugin,
 	tagsistant_querytree *qtree,
-	tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS])
+	tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS],
+	int keyword_counter)
 {
 	/* call plugin processor */
 	dbg('p', LOG_INFO, "Applying plugin %s", plugin->filename);
-	int res = (plugin->processor)(qtree, keywords);
+	int res = (plugin->processor)(qtree, keywords, keyword_counter);
 
 	/* report about processing */
 	switch (res) {
@@ -82,7 +83,7 @@ int tagsistant_run_processor(
 	return (res);
 }
 
-#if TAGSISTANT_EXTRACTOR == 5
+#if TAGSISTANT_EXTRACTOR is 5
 
 /**
  * process a file using plugin chain
@@ -126,7 +127,7 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 		sprintf(keywords[c].value, "%s", keyword_pointer->keyword);
 
 		/* save the mime type */
-		if (EXTRACTOR_MIMETYPE == keyword_pointer->keywordType) {
+		if (keyword_pointer->keywordType is EXTRACTOR_MIMETYPE) {
 			// mime_type = EXTRACTOR_getKeywordValueAsString(keyword_pointer->keywordType);
 			mime_type = g_strdup(keyword_pointer->keyword);
 		}
@@ -136,10 +137,14 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	}
 
 	/*
-	 * If non mime type has been found, set the most generic available:
-	 * application/octet-stream.
+	 * If no mime type has been found just return
 	 */
-	if (!mime_type) mime_type = g_strdup("application/octet-stream");
+	if (!mime_type) {
+		/* lock processor mutex */
+		g_mutex_unlock(&tagsistant_processor_mutex);
+		tagsistant_querytree_destroy(qtree, 1);
+		return(res);
+	}
 
 	/*
 	 * guess the generic MIME type
@@ -155,9 +160,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	 *  apply plugins starting from the most matching first (like: image/jpeg)
 	 */
 	tagsistant_plugin_t *plugin = tagsistant.plugins;
-	while (plugin != NULL) {
-		if (strcmp(plugin->mime_type, mime_type) == 0) {
-			if (TP_STOP == tagsistant_run_processor(plugin, qtree, keywords)) goto STOP_CHAIN_TAGGING;
+	while (plugin isNot NULL) {
+		if (strcmp(plugin->mime_type, mime_type) is 0) {
+			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP) goto STOP_CHAIN_TAGGING;
 		}
 		plugin = plugin->next;
 	}
@@ -166,9 +171,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	 * mime generic then (like: image / *)
 	 */
 	plugin = tagsistant.plugins;
-	while (plugin != NULL) {
-		if (strcmp(plugin->mime_type, mime_generic) == 0) {
-			if (TP_STOP == tagsistant_run_processor(plugin, qtree, keywords)) goto STOP_CHAIN_TAGGING;
+	while (plugin isNot NULL) {
+		if (strcmp(plugin->mime_type, mime_generic) is 0) {
+			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP) goto STOP_CHAIN_TAGGING;
 		}
 		plugin = plugin->next;
 	}
@@ -177,9 +182,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	 * mime everything (* / *)
 	 */
 	plugin = tagsistant.plugins;
-	while (plugin != NULL) {
-		if (strcmp(plugin->mime_type, "*/*") == 0) {
-			if (TP_STOP == tagsistant_run_processor(plugin, qtree, keywords)) goto STOP_CHAIN_TAGGING;
+	while (plugin isNot NULL) {
+		if (strcmp(plugin->mime_type, "*/*") is 0) {
+			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP) goto STOP_CHAIN_TAGGING;
 		}
 		plugin = plugin->next;
 
@@ -236,7 +241,7 @@ static int tagsistant_process_callback(
 	}
 
 	/* save the mime type */
-	if (EXTRACTOR_METATYPE_MIMETYPE == type) {
+	if (type is EXTRACTOR_METATYPE_MIMETYPE) {
 		memset(context->mime_type, 0, TAGSISTANT_MIME_TYPE_FIELD_LENGTH);
 		memcpy(context->mime_type, data, data_len);
 
@@ -295,9 +300,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	 *  apply plugins starting from the most matching first (like: image/jpeg)
 	 */
 	tagsistant_plugin_t *plugin = tagsistant.plugins;
-	while (plugin != NULL) {
-		if (strcmp(plugin->mime_type, context.mime_type) == 0) {
-			if (TP_STOP == tagsistant_run_processor(plugin, qtree, context.keywords)) goto STOP_CHAIN_TAGGING;
+	while (plugin isNot NULL) {
+		if (strcmp(plugin->mime_type, context.mime_type) is 0) {
+			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) goto STOP_CHAIN_TAGGING;
 		}
 		plugin = plugin->next;
 	}
@@ -306,9 +311,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	 * mime generic then (like: image / *)
 	 */
 	plugin = tagsistant.plugins;
-	while (plugin != NULL) {
-		if (strcmp(plugin->mime_type, context.generic_mime_type) == 0) {
-			if (TP_STOP == tagsistant_run_processor(plugin, qtree, context.keywords)) goto STOP_CHAIN_TAGGING;
+	while (plugin isNot NULL) {
+		if (strcmp(plugin->mime_type, context.generic_mime_type) is 0) {
+			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) goto STOP_CHAIN_TAGGING;
 		}
 		plugin = plugin->next;
 	}
@@ -317,9 +322,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	 * mime everything (* / *)
 	 */
 	plugin = tagsistant.plugins;
-	while (plugin != NULL) {
-		if (strcmp(plugin->mime_type, "*/*") == 0) {
-			if (TP_STOP == tagsistant_run_processor(plugin, qtree, context.keywords)) goto STOP_CHAIN_TAGGING;
+	while (plugin isNot NULL) {
+		if (strcmp(plugin->mime_type, "*/*") is 0) {
+			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) goto STOP_CHAIN_TAGGING;
 		}
 		plugin = plugin->next;
 	}
@@ -354,20 +359,23 @@ void tagsistant_keyword_matcher(
 		/*
 		 * build a tag which is "keyword_name:keyword_value"
 		 */
-		gchar *clean_keyword = g_regex_replace_literal(tagsistant_rx_cleaner, keyword, -1, 0, "-", 0, NULL);
-		gchar *clean_value = g_regex_replace_literal(tagsistant_rx_cleaner, value, -1, 0, "-", 0, NULL);
+		size_t keyword_len = strnlen(keyword, TAGSISTANT_MAX_KEYWORD_LENGTH);
+		gchar *clean_keyword = g_regex_replace_literal(tagsistant_rx_cleaner, keyword, keyword_len, 0, "-", 0, NULL);
+
+		size_t value_len = strnlen(value, TAGSISTANT_MAX_KEYWORD_LENGTH);
+		gchar *clean_value = g_regex_replace_literal(tagsistant_rx_cleaner, value, value_len, 0, "-", 0, NULL);
 
 #if 0
 		/* ... turn each slash and space in a dash */
 		gchar *tpointer = clean_keyword;
 		while (*tpointer) {
-			if (*tpointer == '/' || *tpointer == ' ') *tpointer = '-';
+			if (*tpointer is '/' || *tpointer is ' ') *tpointer = '-';
 			tpointer++;
 		}
 
 		tpointer = clean_value;
 		while (*tpointer) {
-			if (*tpointer == '/' || *tpointer == ' ') *tpointer = '-';
+			if (*tpointer is '/' || *tpointer is ' ') *tpointer = '-';
 			tpointer++;
 		}
 #endif
@@ -400,15 +408,16 @@ void tagsistant_plugin_iterator(
 	const tagsistant_querytree *qtree,
 	const gchar *namespace,
 	tagsistant_keyword keywords[TAGSISTANT_MAX_KEYWORDS],
+	int keyword_counter,
 	GRegex *regex)
 {
 	/*
 	 * loop through the keywords to tag the file
 	 */
 	int c = 0;
-	for (; c < TAGSISTANT_MAX_KEYWORDS; c++) {
+	for (; c < TAGSISTANT_MAX_KEYWORDS && c <= keyword_counter; c++) {
 		/* stop looping on the first null keyword */
-		if ('\0' == *(keywords[c].keyword)) break;
+		if (*(keywords[c].keyword) is '\0') break;
 
 		/* tag the qtree with the keyword if the regular expression matches */
 		tagsistant_keyword_matcher(regex, namespace, keywords[c].keyword, keywords[c].value, qtree);
@@ -426,7 +435,7 @@ const gchar *tagsistant_plugin_get_keyword_value(gchar *keyword, tagsistant_keyw
 {
 	int c = 0;
 	for (; c < TAGSISTANT_MAX_KEYWORDS; c++) {
-		if (g_strcmp0(keyword, keywords[c].keyword) == 0) {
+		if (g_strcmp0(keyword, keywords[c].keyword) is 0) {
 			return (keywords[c].value);
 		}
 	}
@@ -463,7 +472,7 @@ void tagsistant_plugin_tag_by_date(const tagsistant_querytree *qtree, const gcha
  */
 void tagsistant_plugin_loader()
 {
-#if TAGSISTANT_EXTRACTOR == 5 // libextractor 0.5.x
+#if TAGSISTANT_EXTRACTOR is 5 // libextractor 0.5.x
 	elist =  EXTRACTOR_loadDefaultLibraries();
 #else
 	plist = EXTRACTOR_plugin_add_defaults(EXTRACTOR_OPTION_DEFAULT_POLICY);
@@ -488,7 +497,7 @@ void tagsistant_plugin_loader()
 	 * TAGSISTANT_PLUGINS or from the default macro PLUGINS_DIR
 	 */
 	char *tagsistant_plugins = NULL;
-	if (getenv("TAGSISTANT_PLUGINS") != NULL) {
+	if (getenv("TAGSISTANT_PLUGINS") isNot NULL) {
 		tagsistant_plugins = g_strdup(getenv("TAGSISTANT_PLUGINS"));
 		if (!tagsistant.quiet) fprintf(stderr, " Using user defined plugin dir: %s\n", tagsistant_plugins);
 	} else {
@@ -500,7 +509,7 @@ void tagsistant_plugin_loader()
 	 * scan the filesystem for plugins
 	 */
 	struct stat st;
-	if (lstat(tagsistant_plugins, &st) == -1) {
+	if (lstat(tagsistant_plugins, &st) is -1) {
 		if (!tagsistant.quiet)
 			fprintf(stderr, " *** error opening directory %s: %s ***\n", tagsistant_plugins, strerror(errno));
 	} else if (!S_ISDIR(st.st_mode)) {
@@ -511,15 +520,15 @@ void tagsistant_plugin_loader()
 		 * open directory and read contents
 		 */
 		DIR *p = opendir(tagsistant_plugins);
-		if (p == NULL) {
+		if (p is NULL) {
 			if (!tagsistant.quiet)
 				fprintf(stderr, " *** error opening plugin directory %s ***\n", tagsistant_plugins);
 		} else {
 			struct dirent *de = NULL;
-			while ((de = readdir(p)) != NULL) {
+			while ((de = readdir(p)) isNot NULL) {
 				/* checking if file begins with tagsistant plugin prefix */
 				char *needle = strstr(de->d_name, TAGSISTANT_PLUGIN_PREFIX);
-				if ((needle == NULL) || (needle != de->d_name)) continue;
+				if ((needle is NULL) || (needle isNot de->d_name)) continue;
 
 #				ifdef MACOSX
 #					define PLUGIN_EXT ".dylib"
@@ -528,7 +537,7 @@ void tagsistant_plugin_loader()
 #				endif
 
 				needle = strstr(de->d_name, PLUGIN_EXT);
-				if ((needle == NULL) || (needle != de->d_name + strlen(de->d_name) - strlen(PLUGIN_EXT)))
+				if ((needle is NULL) || (needle isNot de->d_name + strlen(de->d_name) - strlen(PLUGIN_EXT)))
 					continue;
 
 				/*
@@ -537,7 +546,7 @@ void tagsistant_plugin_loader()
 				 */
 				tagsistant_plugin_t *plugin = g_new0(tagsistant_plugin_t, 1);
 
-				if (NULL == plugin) {
+				if (plugin is NULL) {
 					dbg('p', LOG_ERR, "Error allocating plugin object");
 					continue;
 				}
@@ -548,7 +557,7 @@ void tagsistant_plugin_loader()
 				 * load the plugin
 				 */
 				plugin->handle = dlopen(pname, RTLD_NOW/* |RTLD_GLOBAL */);
-				if (plugin->handle == NULL) {
+				if (plugin->handle is NULL) {
 					if (!tagsistant.quiet)
 						fprintf(stderr, " *** error dlopen()ing plugin %s: %s ***\n", de->d_name, dlerror());
 					g_free_null(plugin);
@@ -575,7 +584,7 @@ void tagsistant_plugin_loader()
 					 * search for MIME type string
 					 */
 					plugin->mime_type = dlsym(plugin->handle, "mime_type");
-					if (plugin->mime_type == NULL) {
+					if (plugin->mime_type is NULL) {
 						if (!tagsistant.quiet)
 							fprintf(stderr, " *** error finding %s processor function: %s ***\n", de->d_name, dlerror());
 						g_free_null(plugin);
@@ -584,13 +593,13 @@ void tagsistant_plugin_loader()
 						 * search for processor function
 						 */
 						plugin->processor = dlsym(plugin->handle, "tagsistant_processor");
-						if (plugin->processor == NULL) {
+						if (plugin->processor is NULL) {
 							if (!tagsistant.quiet)
 								fprintf(stderr, " *** error finding %s processor function: %s ***\n", de->d_name, dlerror());
 							g_free_null(plugin);
 						} else {
 							plugin->free = dlsym(plugin->handle, "tagsistant_plugin_free");
-							if (plugin->free == NULL) {
+							if (plugin->free is NULL) {
 								if (!tagsistant.quiet)
 									fprintf(stderr, " *** error finding %s free function: %s (still registering the plugin) ***", de->d_name, dlerror());
 							}
@@ -623,9 +632,9 @@ void tagsistant_plugin_unloader()
 	/* unregistering plugins */
 	tagsistant_plugin_t *pp = tagsistant.plugins;
 	tagsistant_plugin_t *ppnext = pp;
-	while (pp != NULL) {
+	while (pp isNot NULL) {
 		/* call plugin free method to let it free allocated resources */
-		if (pp->free != NULL) {
+		if (pp->free isNot NULL) {
 			(pp->free)();
 		}
 		g_free_null(pp->filename);	/* free plugin filename */
@@ -652,9 +661,9 @@ void tagsistant_plugin_apply_regex(const tagsistant_querytree *qtree, const char
 	GMatchInfo *match_info;
 
 	/* apply the regex, locking the mutex if provided */
-	if (NULL != m) g_mutex_lock(m);
+	if (m isNot NULL) g_mutex_lock(m);
 	g_regex_match(rx, buf, 0, &match_info);
-	if (NULL != m) g_mutex_unlock(m);
+	if (m isNot NULL) g_mutex_unlock(m);
 
 	/* process the matched entries */
 	while (g_match_info_matches(match_info)) {

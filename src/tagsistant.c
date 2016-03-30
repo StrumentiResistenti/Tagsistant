@@ -142,6 +142,7 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"    -v                       verbose syslogging\n"
 		"    -f                       run in foreground\n"
 		"    -s                       run single threaded\n"
+		"    --no-autotagging, -a     disable autotagging\n"
 		"    --open-permission, -P    relax metadirectories permissions to 0777 \n"
 		"    --multi-symlink, -m      create multiple symlink with the same name if\n"
 		"                               their targets differ \n"
@@ -218,6 +219,7 @@ extern void tagsistant_show_config();
 static GOptionEntry tagsistant_options[] =
 {
   { "help", 'h', 0,	 			G_OPTION_ARG_NONE,				&tagsistant.show_help,	 		"Show help screen", NULL },
+  { "no-autotagging", 'a', 0,	G_OPTION_ARG_NONE,				&tagsistant.no_autotagging,		"Disable autotagging", NULL },
   { "dbg", 'd', 0,	 			G_OPTION_ARG_NONE,				&tagsistant.debug,	 			"Enable debug", NULL },
   { "debug", 0, 0,	 			G_OPTION_ARG_STRING,			&tagsistant.debug_flags, 		"Debug flags", "bcfFlpqrs2" },
   { "repository", 0, 0,			G_OPTION_ARG_FILENAME,			&tagsistant.repository, 		"Repository path", "<repository path>" },
@@ -255,7 +257,7 @@ int tagsistant_fuse_main(
 	 * check if /etc/fuse.conf is readable
 	 */
 	int fd = open("/etc/fuse.conf", O_RDONLY);
-	if (-1 == fd) {
+	if (fd is -1) {
 		fprintf(stderr, " \n");
 		fprintf(stderr, " ERROR: Can't read /etc/fuse.conf\n");
 		fprintf(stderr, " Make sure to add your user to the fuse system group.\n");
@@ -288,7 +290,7 @@ int main(int argc, char *argv[])
 
 #ifndef MACOSX
 	char *destfile = getenv("MALLOC_TRACE");
-	if (destfile != NULL && strlen(destfile)) {
+	if (destfile isNot NULL && strlen(destfile)) {
 		fprintf(stderr, "\n *** logging g_malloc() calls to %s ***\n", destfile);
 		mtrace();
 	}
@@ -501,8 +503,8 @@ int main(int argc, char *argv[])
 	 * checking if mount point exists or can be created
 	 */
 	struct stat mst;
-	if ((lstat(tagsistant.mountpoint, &mst) == -1) && (errno == ENOENT)) {
-		if (mkdir(tagsistant.mountpoint, S_IRWXU|S_IRGRP|S_IXGRP) != 0) {
+	if ((lstat(tagsistant.mountpoint, &mst) is -1) && (errno is ENOENT)) {
+		if (mkdir(tagsistant.mountpoint, S_IRWXU|S_IRGRP|S_IXGRP) isNot 0) {
 			// tagsistant_usage(tagsistant.progname);
 			if (!tagsistant.quiet)
 				fprintf(stderr, "\n *** Mountpoint %s does not exists and can't be created! ***\n", tagsistant.mountpoint);
@@ -522,7 +524,7 @@ int main(int argc, char *argv[])
 	);
 
 	/* checking repository */
-	if (!tagsistant.repository || (strcmp(tagsistant.repository, "") == 0)) {
+	if (!tagsistant.repository || (strcmp(tagsistant.repository, "") is 0)) {
 		if (strlen(getenv("HOME"))) {
 			g_free_null(tagsistant.repository);
 			tagsistant.repository = g_strdup_printf("%s/.tagsistant", getenv("HOME"));
@@ -540,14 +542,14 @@ int main(int argc, char *argv[])
 
 	/* removing last slash */
 	int replength = strlen(tagsistant.repository) - 1;
-	if (tagsistant.repository[replength] == '/') {
+	if (tagsistant.repository[replength] is '/') {
 		tagsistant.repository[replength] = '\0';
 	}
 
 	/* checking if repository path begings with ~ */
-	if (tagsistant.repository[0] == '~') {
+	if (tagsistant.repository[0] is '~') {
 		char *home_path = getenv("HOME");
-		if (home_path != NULL) {
+		if (home_path isNot NULL) {
 			char *relative_path = g_strdup(tagsistant.repository + 1);
 			g_free_null(tagsistant.repository);
 			tagsistant.repository = g_strdup_printf("%s%s", home_path, relative_path);
@@ -559,10 +561,10 @@ int main(int argc, char *argv[])
 	} else 
 
 	/* checking if repository is a relative path */
-	if (tagsistant.repository[0] != '/') {
+	if (tagsistant.repository[0] isNot '/') {
 		dbg('b', LOG_ERR, "Repository path is relative [%s]", tagsistant.repository);
 		char *cwd = getcwd(NULL, 0);
-		if (cwd == NULL) {
+		if (cwd is NULL) {
 			dbg('b', LOG_ERR, "Error getting working directory, will leave repository path as is");
 		} else {
 			gchar *absolute_repository = g_strdup_printf("%s/%s", cwd, tagsistant.repository);
@@ -573,8 +575,8 @@ int main(int argc, char *argv[])
 	}
 
 	struct stat repstat;
-	if (lstat(tagsistant.repository, &repstat) == -1) {
-		if(mkdir(tagsistant.repository, 755) == -1) {
+	if (lstat(tagsistant.repository, &repstat) is -1) {
+		if(mkdir(tagsistant.repository, 755) is -1) {
 			if (!tagsistant.quiet)
 				fprintf(stderr, "\n *** REPOSITORY: Can't mkdir(%s): %s ***\n", tagsistant.repository, strerror(errno));
 			exit(2);
@@ -587,7 +589,7 @@ int main(int argc, char *argv[])
 
 	/* tags.sql is also used by getattr() as a guaranteed file when asked for stats/ files */
 	struct stat tags_st;
-	if (-1 == stat(tagsistant.tags, &tags_st)) {
+	if (stat(tagsistant.tags, &tags_st) is -1) {
 		int tags_fd = creat(tagsistant.tags, S_IRUSR|S_IWUSR);
 		if (tags_fd) close(tags_fd);
 	}
@@ -595,8 +597,8 @@ int main(int argc, char *argv[])
 	/* checking file archive directory */
 	tagsistant.archive = g_strdup_printf("%s/archive/", tagsistant.repository);
 
-	if (lstat(tagsistant.archive, &repstat) == -1) {
-		if(mkdir(tagsistant.archive, 755) == -1) {
+	if (lstat(tagsistant.archive, &repstat) is -1) {
+		if(mkdir(tagsistant.archive, 755) is -1) {
 			if (!tagsistant.quiet)
 				fprintf(stderr, "\n *** ARCHIVE: Can't mkdir(%s): %s ***\n", tagsistant.archive, strerror(errno));
 			exit(2);
@@ -674,7 +676,7 @@ int main(int argc, char *argv[])
 	tagsistant_deduplication_init();
 
 	/* SQLite requires tagsistant to run in single thread mode */
-	if (tagsistant.sql_database_driver == TAGSISTANT_DBI_SQLITE_BACKEND) {
+	if (tagsistant.sql_database_driver is TAGSISTANT_DBI_SQLITE_BACKEND) {
 		// tagsistant.singlethread = TRUE;
 		// fuse_opt_add_arg(&args, "-s");
 	}

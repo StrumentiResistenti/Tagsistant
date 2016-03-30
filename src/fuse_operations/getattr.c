@@ -31,7 +31,7 @@ int tagsistant_valid_relation(tagsistant_querytree *qtree, tagsistant_inode tag_
 {
 	int relation_is_valid = 0;
 
-	if (g_strcmp0(qtree->relation, "is_equivalent") == 0) {
+	if (g_strcmp0(qtree->relation, "is_equivalent") is 0) {
 		tagsistant_query(
 			"select 1 from relations "
 				"where relation = 'is_equivalent' and"
@@ -45,9 +45,9 @@ int tagsistant_valid_relation(tagsistant_querytree *qtree, tagsistant_inode tag_
 			related_tag_id,
 			tag_id);
 	} else if (
-		(g_strcmp0(qtree->relation, "includes") == 0) ||
-		(g_strcmp0(qtree->relation, "excludes") == 0) ||
-		(g_strcmp0(qtree->relation, "requires") == 0)
+		(g_strcmp0(qtree->relation, "includes") is 0) ||
+		(g_strcmp0(qtree->relation, "excludes") is 0) ||
+		(g_strcmp0(qtree->relation, "requires") is 0)
 	) {
 		tagsistant_query(
 			"select 1 from relations "
@@ -213,12 +213,12 @@ int tagsistant_getattr(const char *path, struct stat *stbuf)
 				gchar *tags_list = tagsistant_get_file_tags(qtree);
 				stbuf->st_size = strlen(tags_list);
 			}
-		} else if (NULL == qtree->last_tag) {
+		} else if (qtree->last_tag is NULL) {
 			stbuf->st_mode = S_IFDIR|_PERMISSIONS;
-		} else if (g_strcmp0(qtree->last_tag, "ALL") == 0) {
+		} else if (g_strcmp0(qtree->last_tag, "ALL") is 0) {
 			stbuf->st_mode = S_IFDIR|_PERMISSIONS;
-		} else if ((g_strcmp0(qtree->last_tag, TAGSISTANT_ANDSET_DELIMITER) == 0) ||
-			(g_strcmp0(qtree->last_tag, TAGSISTANT_NEGATE_NEXT_TAG) == 0)) {
+		} else if ((g_strcmp0(qtree->last_tag, TAGSISTANT_ANDSET_DELIMITER) is 0) ||
+			(g_strcmp0(qtree->last_tag, TAGSISTANT_NEGATE_NEXT_TAG) is 0)) {
 
 			// path ends by '+' or by '!'
 			stbuf->st_ino += 1;
@@ -226,16 +226,16 @@ int tagsistant_getattr(const char *path, struct stat *stbuf)
 			// stbuf->st_mode = S_IFDIR|S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH;
 			stbuf->st_mode = S_IFDIR|_PERMISSIONS;
 
-		} else if ((g_strcmp0(qtree->last_tag, TAGSISTANT_QUERY_DELIMITER) == 0) ||
-			(g_strcmp0(qtree->last_tag, TAGSISTANT_QUERY_DELIMITER_NO_REASONING) == 0)) {
+		} else if ((g_strcmp0(qtree->last_tag, TAGSISTANT_QUERY_DELIMITER) is 0) ||
+			(g_strcmp0(qtree->last_tag, TAGSISTANT_QUERY_DELIMITER_NO_REASONING) is 0)) {
 
 			// path ends by TAGSISTANT_QUERY_DELIMITER (with or without reasoning)
 			stbuf->st_ino += 2;
 			stbuf->st_mode = S_IFDIR|_PERMISSIONS;
 			stbuf->st_nlink = 1;
 
-		} else if ((g_strcmp0(qtree->last_tag, TAGSISTANT_TAG_GROUP_BEGIN) == 0) ||
-			(g_strcmp0(qtree->last_tag, TAGSISTANT_TAG_GROUP_END) == 0)) {
+		} else if ((g_strcmp0(qtree->last_tag, TAGSISTANT_TAG_GROUP_BEGIN) is 0) ||
+			(g_strcmp0(qtree->last_tag, TAGSISTANT_TAG_GROUP_END) is 0)) {
 
 			// path ends by TAGSISTANT_QUERY_DELIMITER (with or without reasoning)
 			stbuf->st_ino += 3;
@@ -327,7 +327,7 @@ int tagsistant_getattr(const char *path, struct stat *stbuf)
 
 TAGSISTANT_EXIT_OPERATION:
 
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("GETATTR on %s (%s) {%s}: %d %d: %s", path, lstat_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);

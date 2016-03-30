@@ -61,7 +61,7 @@ int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gchar *hex
 	 */
 	struct stat st;
 	int result = lstat(qtree->full_archive_path, &st);
-	if (0 == result && S_ISDIR(st.st_mode)) {
+	if (result is 0 && S_ISDIR(st.st_mode)) {
 		dbg('2', LOG_INFO, "%s is a directory, skipping deduplication and autotagging", qtree->full_archive_path);
 		return (TAGSISTANT_DONT_DO_AUTOTAGGING);
 	}
@@ -86,18 +86,18 @@ int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gchar *hex
 	 * if this is the only copy of the file, we can
 	 * return and auto-tagging can be performed
 	 */
-	if (qtree->inode == main_inode) return (TAGSISTANT_DO_AUTOTAGGING);
+	if (qtree->inode is main_inode) return (TAGSISTANT_DO_AUTOTAGGING);
 
 	dbg('2', LOG_INFO, "Deduplicating %s: %d -> %d", qtree->full_archive_path, qtree->inode, main_inode);
 
 	/*
 	 * first move all the tags of qtree->inode to main_inode
 	 */
-	if (TAGSISTANT_DBI_SQLITE_BACKEND == tagsistant.sql_database_driver) {
+	if (tagsistant.sql_database_driver is TAGSISTANT_DBI_SQLITE_BACKEND) {
 		tagsistant_query(
 			"update or ignore tagging set inode = %d where inode = %d",
 			qtree->dbi,	NULL, NULL,	main_inode,	qtree->inode);
-	} else if (TAGSISTANT_DBI_MYSQL_BACKEND == tagsistant.sql_database_driver) {
+	} else if (tagsistant.sql_database_driver is TAGSISTANT_DBI_MYSQL_BACKEND) {
 		tagsistant_query(
 			"update ignore tagging set inode = %d where inode = %d",
 			qtree->dbi,	NULL, NULL,	main_inode,	qtree->inode);
@@ -134,6 +134,32 @@ int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gchar *hex
 }
 
 /**
+ * Schedule a tagsistant_querytree for autotagging
+ *
+ * @param qtree the tagsistant_querytree to be scheduled
+ */
+#if TAGSISTANT_ENABLE_AUTOTAGGING
+void tagsistant_schedule_for_autotagging(tagsistant_querytree *qtree)
+{
+	/*
+	 * check if autotagging was disabled from command line
+	 */
+	if (tagsistant.no_autotagging is FALSE) return;
+
+	gchar *paths = g_strdup_printf("%s%s%s",
+		qtree->full_path, TAGSISTANT_AUTOTAGGING_SEPARATOR, qtree->full_archive_path);
+
+	dbg('p', LOG_INFO, "Running autotagging on %s", qtree->object_path);
+
+	/*
+	 * the object is eligible for autotagging,
+	 * so we submit it into the autotagging queue
+	 */
+	g_async_queue_push(tagsistant_autotagging_queue, paths);
+}
+#endif
+
+/**
  * kernel of the deduplication thread
  *
  * @param data the path to be deduplicated (must be casted back to gchar*)
@@ -153,7 +179,7 @@ gpointer tagsistant_deduplication_kernel(gpointer data)
 		int fd = open(qtree->full_archive_path, O_RDONLY|O_NOATIME);
 		// tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 
-		if (-1 != fd) {
+		if (fd isNot -1) {
 			dbg('2', LOG_INFO, "Running deduplication on %s", path);
 
 			GChecksum *checksum = g_checksum_new(G_CHECKSUM_SHA1);
@@ -188,23 +214,11 @@ gpointer tagsistant_deduplication_kernel(gpointer data)
 					 * look for duplicated objects
 					 */
 					if (tagsistant_querytree_find_duplicates(qtree, hex)) {
-#if TAGSISTANT_ENABLE_AUTOTAGGING
 						/*
 						 * before destroying the qtree, we build the string
 						 * to schedule the object for autotagging
 						 */
-						gchar *paths = g_strdup_printf("%s%s%s",
-							path, TAGSISTANT_AUTOTAGGING_SEPARATOR,
-							qtree->full_archive_path);
-
-						dbg('p', LOG_INFO, "Running autotagging on %s", qtree->object_path);
-
-						/*
-						 * the object is eligible for autotagging,
-						 * so we submit it into the autotagging queue
-						 */
-						g_async_queue_push(tagsistant_autotagging_queue, paths);
-#endif
+						tagsistant_schedule_for_autotagging(qtree);
 					}
 
 					tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
@@ -375,7 +389,7 @@ void tagsistant_deduplication_init()
  *
  * @path the path to be deduplicated
  */
-void tagsistant_deduplicate(gchar *path)
+void tagsistant_deduplicate(const gchar *path)
 {
 #if TAGSISTANT_INLINE_DEDUPLICATION
 	dbg('2', LOG_ERR, "Inline deduplication of %s", path);

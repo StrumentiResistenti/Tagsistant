@@ -50,7 +50,7 @@ int tagsistant_mkdir(const char *path, mode_t mode)
 			// create a new directory inside tagsistant.archive directory
 			// and tag it with all the tags in the qtree
 			res = tagsistant_force_create_and_tag_object(qtree, &tagsistant_errno);
-			if (-1 == res) goto TAGSISTANT_EXIT_OPERATION;
+			if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
 		}
 
 		// do a real mkdir
@@ -147,7 +147,7 @@ int tagsistant_mkdir(const char *path, mode_t mode)
 	else TAGSISTANT_ABORT_OPERATION(EROFS);
 
 TAGSISTANT_EXIT_OPERATION:
-	if ( res == -1 ) {
+	if ( res is -1 ) {
 		TAGSISTANT_STOP_ERROR("MKDIR on %s (%s): %d %d: %s", path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
