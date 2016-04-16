@@ -1,6 +1,6 @@
 /*
    Tagsistant (tagfs) -- plugin.c
-   Copyright (C) 2006-2014 Tx0 <tx0@strumentiresistenti.org>
+   Copyright (C) 2006-2016 Tx0 <tx0@strumentiresistenti.org>
 
    Tagsistant (tagfs) plugin support
 
@@ -415,7 +415,7 @@ void tagsistant_plugin_iterator(
 	 * loop through the keywords to tag the file
 	 */
 	int c = 0;
-	for (; c < TAGSISTANT_MAX_KEYWORDS && c <= keyword_counter; c++) {
+	for (; c < TAGSISTANT_MAX_KEYWORDS && c < keyword_counter; c++) {
 		/* stop looping on the first null keyword */
 		if (*(keywords[c].keyword) is '\0') break;
 
@@ -491,6 +491,15 @@ void tagsistant_plugin_loader()
 		0, 0, NULL);
 
 	tagsistant_rx_cleaner = g_regex_new("[/ ]", 0, 0, NULL);
+
+	/*
+	 * quit if no autotagging was required at mount
+	 */
+	if (tagsistant.no_autotagging) {
+		dbg('p', LOG_INFO, "Skipping plugin loading because -a was specified");
+		if (!tagsistant.quiet) fprintf(stderr, " *** skipping plugin loading because -a was specified");
+		return;
+	}
 
 	/*
 	 * get the plugin dir from the environment variable
