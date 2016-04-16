@@ -131,7 +131,7 @@ int tagsistant_check_single_tagging(qtree_and_node *and, dbi_conn dbi, gchar *ob
 	 * if the tag is a triple tag and its operator is not equality,
 	 * this function should return 1
 	 */
-	if (and->namespace && strlen(and->namespace) && TAGSISTANT_EQUAL_TO isNot and->operator) return (1);
+	if (and->namespace && strlen(and->namespace) && and->operator isNot TAGSISTANT_EQUAL_TO) return (1);
 
 	/*
 	 * otherwise the tagging has to be checked
@@ -386,13 +386,19 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 	tagsistant_rds *rds = tagsistant_rds_new_or_lookup(qtree);
 
 	if (rds) {
+		tagsistant_rds_read_lock(rds, qtree->dbi);
+
 		tagsistant_rds_entry *e = g_hash_table_find(rds->entries,
 			tagsistant_rds_contains_object, object_path_first_token);
 
 		if (e) {
 			qtree->exists = 1;
-			if (e->inode isNot qtree->inode) tagsistant_querytree_set_inode(qtree, e->inode);
+			if (e->inode isNot qtree->inode) {
+				tagsistant_querytree_set_inode(qtree, e->inode);
+			}
 		}
+
+		tagsistant_rds_read_unlock(rds);
 	}
 
 	g_free_null(object_path_first_token);
@@ -667,7 +673,7 @@ int tagsistant_querytree_parse_store (
 			/*
 			 * Next tokens will be added to current qtree_and_node structure
 			 */
-			if (TAGSISTANT_TAG_GROUP_ADD_NEW_NODE is tag_group) {
+			if (tag_group is TAGSISTANT_TAG_GROUP_ADD_NEW_NODE) {
 				tag_group = TAGSISTANT_TAG_GROUP_ADD_TO_NODE;
 			}
 
@@ -699,7 +705,7 @@ int tagsistant_querytree_parse_store (
 	 * if last token is TAGSISTANT_QUERY_DELIMITER_CHAR,
 	 * move the pointer one element forward
 	 */
-	if (__TOKEN && (TAGSISTANT_QUERY_DELIMITER_CHAR is *__TOKEN)) {
+	if (__TOKEN && (*__TOKEN is TAGSISTANT_QUERY_DELIMITER_CHAR)) {
 		if (!qtree->tree || !qtree->tree->and_set) {
 			qtree->error_message = g_strdup(TAGSISTANT_ERROR_NULL_QUERY);
 		}

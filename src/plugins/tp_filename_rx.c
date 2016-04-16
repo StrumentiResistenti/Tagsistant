@@ -384,7 +384,7 @@ void apply_rules(const gchar *token, const tagsistant_querytree *qtree)
 				 */
 				gchar **format_elements = g_strsplit(format, ":", 4);
 
-				if (strcmp("S", format_elements[0]) == 0) {
+				if (strcmp("S", format_elements[0]) is 0) {
 
 					/*
 					 * simple tag
@@ -396,7 +396,7 @@ void apply_rules(const gchar *token, const tagsistant_querytree *qtree)
 							action->format, rule->pattern);
 					}
 
-				} else if (strcmp("M", format_elements[0]) == 0) {
+				} else if (strcmp("M", format_elements[0]) is 0) {
 
 					/*
 					 * machine tag

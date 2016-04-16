@@ -90,7 +90,7 @@ int tagsistant_write(const char *path, const char *buf, size_t size, off_t offse
 			tagsistant_errno = errno;
 		}
 
-		if ((res is -1) || (fh is 0)) {
+		if ((res is -1) || (fh is 0)) { // TODO or was it "fs is -1"?
 			if (fh) close(fh);
 			fh = open(qtree->full_archive_path, fi->flags|O_WRONLY);
 			if (fh)	res = pwrite(fh, buf, size, offset);

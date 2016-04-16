@@ -259,7 +259,11 @@ int tagsistant_readdir_on_store(
 		} else {
 			/* build the filetree */
 			tagsistant_rds *rds = tagsistant_rds_new_or_lookup(qtree);
+			if (!rds) { /* TODO cope with this */ }
+
+			tagsistant_rds_read_lock(rds, qtree->dbi);
 			g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_readdir_on_store_filler, ufs);
+			tagsistant_rds_read_unlock(rds);
 		}
 	} else {
 

@@ -25,7 +25,7 @@ int tagsistant_create_symlink(tagsistant_querytree *to_qtree, const gchar *from,
 
 	int res = tagsistant_force_create_and_tag_object(to_qtree, tagsistant_errno);
 
-	if (-1 != res) {
+	if (res isNot -1) {
 		// save the target path for future checks
 		tagsistant_query(
 			"update objects set symlink = '%s' where inode = %d",

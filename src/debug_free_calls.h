@@ -32,11 +32,11 @@ unfreeable_t *freeblock;
 
 #define unfreeable(symbol) {\
 	unfreeable_t *uf = freeblock;\
-	if (uf != NULL)\
-		while (uf->next != NULL)\
+	if (uf isNot NULL)\
+		while (uf->next isNot NULL)\
 			uf = uf->next;\
 	uf = g_malloc(sizeof(struct unfreeable));\
-	if (uf != NULL) {\
+	if (uf isNot NULL) {\
 		uf->next = NULL;\
 		uf->address = (void *) symbol;\
 	} else {\
@@ -46,15 +46,15 @@ unfreeable_t *freeblock;
 
 #define free(symbol) {\
 	unfreeable_t *uf = freeblock;\
-	while (uf != NULL) {\
-		if (uf->address == symbol) {\
+	while (uf isNot NULL) {\
+		if (uf->address is symbol) {\
 			dbg(LOG_INFO, "Trying to free(%s), which is marked unfreeable!", __STRING(symbol));\
 			break;\
 		}\
 		uf = uf->next;\
 	}\
 	dbg(LOG_INFO, "free(%s)", __STRING(symbol));\
-	assert(symbol != NULL);\
+	assert(symbol isNot NULL);\
 	free(symbol);\
 }
 

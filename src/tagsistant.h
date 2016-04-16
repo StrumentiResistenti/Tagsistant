@@ -157,7 +157,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#if FUSE_USE_VERSION == 25
+#if FUSE_USE_VERSION is 25
 #	if HAVE_SYS_STATVFS_H
 #		include <sys/statvfs.h>
 # endif
@@ -187,9 +187,9 @@
 #include <extractor.h>
 
 /** define libextractor support */
-#if (EXTRACTOR_VERSION & 0x00050000) == 0x00050000
+#if (EXTRACTOR_VERSION & 0x00050000) is 0x00050000
 #	define TAGSISTANT_EXTRACTOR 5          // libextractor 0.5.x
-#elif (EXTRACTOR_VERSION & 0x00060000) == 0x00060000
+#elif (EXTRACTOR_VERSION & 0x00060000) is 0x00060000
 #	define TAGSISTANT_EXTRACTOR 6          // libextractor 0.6.x
 #else
 #	define TAGSISTANT_EXTRACTOR 0          // no support for libextractor
@@ -326,6 +326,7 @@ extern void tagsistant_init_syslog();
 extern void tagsistant_plugin_loader();
 extern void tagsistant_plugin_unloader();
 extern void tagsistant_deduplication_init();
+extern void tagsistant_rds_init();
 
 // call the plugin stack
 extern int tagsistant_process(gchar *path, gchar *full_archive_path);
@@ -392,17 +393,24 @@ typedef struct {
 	gchar *checksum;
 	gchar *path;
 	int is_all_path;
+#if	TAGSISTANT_RDS_NEEDS_TREE
 	qtree_or_node *tree;
+#endif
 	GHashTable *entries;
+	GRWLock rwlock;
+	GMutex materializer_mutex;
 } tagsistant_rds;
-
-GHashTable *tagsistant_rds_registry;
 
 extern tagsistant_rds *	tagsistant_rds_new_or_lookup(tagsistant_querytree *qtree);
 extern tagsistant_rds *	tagsistant_rds_new(tagsistant_querytree *qtree);
 extern void				tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data);
 extern void				tagsistant_delete_rds_involved(tagsistant_querytree *qtree);
-extern gboolean			tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi);
+extern gboolean			tagsistant_materialize_rds(tagsistant_rds *rds, tagsistant_querytree *qtree);
 extern gchar *			tagsistant_get_rds_checksum(tagsistant_querytree *qtree);
 extern tagsistant_rds *	tagsistant_rds_lookup(const gchar *checksum);
 extern gboolean			tagsistant_rds_contains_object(gpointer key, gpointer value, gpointer user_data);
+
+extern gboolean			tagsistant_rds_read_lock(tagsistant_rds *rds, tagsistant_querytree *qtree);
+extern void				tagsistant_rds_read_unlock(tagsistant_rds *rds);
+extern gboolean			tagsistant_rds_write_lock(tagsistant_rds *rds);
+extern void				tagsistant_rds_write_unlock(tagsistant_rds *rds);

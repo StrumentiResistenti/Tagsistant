@@ -162,7 +162,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	tagsistant_plugin_t *plugin = tagsistant.plugins;
 	while (plugin isNot NULL) {
 		if (strcmp(plugin->mime_type, mime_type) is 0) {
-			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP) goto STOP_CHAIN_TAGGING;
+			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP){
+				goto STOP_CHAIN_TAGGING;
+			}
 		}
 		plugin = plugin->next;
 	}
@@ -173,7 +175,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	plugin = tagsistant.plugins;
 	while (plugin isNot NULL) {
 		if (strcmp(plugin->mime_type, mime_generic) is 0) {
-			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP) goto STOP_CHAIN_TAGGING;
+			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP) {
+				goto STOP_CHAIN_TAGGING;
+			}
 		}
 		plugin = plugin->next;
 	}
@@ -184,7 +188,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	plugin = tagsistant.plugins;
 	while (plugin isNot NULL) {
 		if (strcmp(plugin->mime_type, "*/*") is 0) {
-			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP) goto STOP_CHAIN_TAGGING;
+			if (tagsistant_run_processor(plugin, qtree, keywords, TAGSISTANT_MAX_KEYWORDS - 1) is TP_STOP) {
+				goto STOP_CHAIN_TAGGING;
+			}
 		}
 		plugin = plugin->next;
 
@@ -302,7 +308,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	tagsistant_plugin_t *plugin = tagsistant.plugins;
 	while (plugin isNot NULL) {
 		if (strcmp(plugin->mime_type, context.mime_type) is 0) {
-			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) goto STOP_CHAIN_TAGGING;
+			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) {
+				goto STOP_CHAIN_TAGGING;
+			}
 		}
 		plugin = plugin->next;
 	}
@@ -313,7 +321,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	plugin = tagsistant.plugins;
 	while (plugin isNot NULL) {
 		if (strcmp(plugin->mime_type, context.generic_mime_type) is 0) {
-			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) goto STOP_CHAIN_TAGGING;
+			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) {
+				goto STOP_CHAIN_TAGGING;
+			}
 		}
 		plugin = plugin->next;
 	}
@@ -324,7 +334,9 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	plugin = tagsistant.plugins;
 	while (plugin isNot NULL) {
 		if (strcmp(plugin->mime_type, "*/*") is 0) {
-			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) goto STOP_CHAIN_TAGGING;
+			if (tagsistant_run_processor(plugin, qtree, context.keywords, context.current_keyword) is TP_STOP) {
+				goto STOP_CHAIN_TAGGING;
+			}
 		}
 		plugin = plugin->next;
 	}

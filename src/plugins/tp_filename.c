@@ -72,8 +72,8 @@ int tagsistant_plugin_init()
 	gchar *splitter = tagsistant_get_ini_entry("filename", "splitter");
 
 	/* set default tag-splitter if not configured */
-	if (!splitter || g_strcmp0(splitter, "") == 0) {
-		if(g_strcmp0(splitter, "") == 0) {
+	if (!splitter || g_strcmp0(splitter, "") is 0) {
+		if(g_strcmp0(splitter, "") is 0) {
 			g_free(splitter);
 		}
 		splitter = ",";
@@ -89,17 +89,17 @@ int tagsistant_plugin_init()
 	}
 
 	/* determine if there are simple tags configured */
-	if (!simple || g_strcmp0(simple, "") == 0) {
+	if (!simple || g_strcmp0(simple, "") is 0) {
 		simple_active = FALSE;
 	}
 
 	/* determine if there are machine tags configured */
-	if (!machine || g_strcmp0(machine, "") == 0) {
+	if (!machine || g_strcmp0(machine, "") is 0) {
 		machine_active = FALSE;
 	}
 
 	/* disable plugin if there are two few settings for it */
-	if (!pattern || (g_strcmp0(pattern, "") == 0) || (!simple_active && !machine_active)) {
+	if (!pattern || (g_strcmp0(pattern, "") is 0) || (!simple_active && !machine_active)) {
 		dbg('p', LOG_INFO, "filename-plugin: disabled");
 
 		if (splitter_free) {
@@ -116,7 +116,7 @@ int tagsistant_plugin_init()
 	rx = g_regex_new(pattern, TAGSISTANT_RX_COMPILE_FLAGS, 0, &err);
 
 	/* disable plugin on regex error */
-	if (err != NULL) {
+	if (err isNot NULL) {
 		dbg('p', LOG_ERR, "filename-plugin: %s", err->message);
 		g_error_free(err);
 		g_regex_unref(rx);
@@ -137,13 +137,13 @@ int tagsistant_plugin_init()
 	if(machine_active) {
 		gchar **split_m_tags = g_strsplit(machine, splitter, 0);
 		int i = 0;
-		while(split_m_tags[i] != NULL) {
-			if(g_strcmp0(split_m_tags[i], "") == 0) { // FIXME: check for more syntax errors in split_m_tags[i]
+		while(split_m_tags[i] isNot NULL) {
+			if(g_strcmp0(split_m_tags[i], "") is 0) { // FIXME: check for more syntax errors in split_m_tags[i]
 				continue;
 			}
 			/* store the machine tag components in an easy access struct */
 			machine_tags_current = g_new(machine_tag, 1);
-			if(machine_tags_begin == NULL) {
+			if(machine_tags_begin is NULL) {
 				machine_tags_begin = machine_tags_current; // initialize beginning of the machine_tags list
 			}
 			machine_tags_current->tags = g_strsplit(split_m_tags[i], m_splitter, 0);
@@ -153,7 +153,7 @@ int tagsistant_plugin_init()
 			machine_tags_current->rx = g_regex_new(machine_rx, TAGSISTANT_RX_COMPILE_FLAGS, 0, &err);
 			g_free(machine_rx);
 			/* if there is an error in the tags regexp the tag is ignored */
-			if (err != NULL) {
+			if (err isNot NULL) {
 				dbg('p', LOG_ERR, "filename-plugin: machine-tag: %s", err->message);
 				g_error_free(err);
 				g_regex_unref(machine_tags_current->rx);
@@ -199,8 +199,8 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 		 * one of them */
 		if(simple_active) {
 			simple_tags_current = simple_tags_begin;
-			while((*simple_tags_current) != NULL) {
-				if(g_strcmp0(*simple_tags_current, match) == 0) {
+			while((*simple_tags_current) isNot NULL) {
+				if(g_strcmp0(*simple_tags_current, match) is 0) {
 					tagsistant_sql_tag_object(qtree->dbi, match, NULL, NULL, qtree->inode);
 					break;
 				}
@@ -212,8 +212,8 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 		if(machine_active) {
 			GMatchInfo *machine_match_info;
 			machine_tags_current = machine_tags_begin;
-			while(machine_tags_current != NULL) {
-				if(machine_tags_current->rx == NULL) {
+			while(machine_tags_current isNot NULL) {
+				if(machine_tags_current->rx is NULL) {
 					continue;
 				}
 				g_regex_match(machine_tags_current->rx, match, 0, &machine_match_info);
@@ -232,7 +232,7 @@ int tagsistant_processor(tagsistant_querytree *qtree, tagsistant_keyword keyword
 		gchar *filename_temp = g_strndup(filename, strlen(filename) - strlen(match));
 		int pos = (int)(filename_search - filename);
 		filename_search += strlen(match);
-		while((*filename_search) != '\0') {
+		while((*filename_search) isNot '\0') {
 			filename_temp[pos++] = *filename_search;
 			filename_search++;
 		}
@@ -263,10 +263,10 @@ void tagsistant_plugin_free()
 	if(machine_active) {
 		machine_tags_current = machine_tags_begin;
 		machine_tag *m_tags_temp = machine_tags_begin;
-		while(machine_tags_current != NULL) {
+		while(machine_tags_current isNot NULL) {
 			g_strfreev(machine_tags_current->tags);
 			g_free(machine_tags_current->namespace);
-			if(machine_tags_current->rx != NULL) {
+			if(machine_tags_current->rx isNot NULL) {
 				g_regex_unref(machine_tags_current->rx);
 			}
 			m_tags_temp = machine_tags_current->next;

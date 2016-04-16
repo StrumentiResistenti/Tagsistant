@@ -23,9 +23,16 @@
 
 /************************************************************************************/
 /***                                                                              ***/
-/*** FileTree translation                                                         ***/
+/*** RDS are reusable data sets with query results. An RDS can be served on       ***/
+/*** answering to a readdir() call or to a getattr() call. It's basically a       ***/
+/*** cache and has to be invalidated when data change.                            ***/
 /***                                                                              ***/
 /************************************************************************************/
+
+#define TAGSISTANT_RDS_HARD_CLEAN TRUE
+
+GRWLock tagsistant_rds_cache_rwlock;
+GHashTable *tagsistant_rds_cache = NULL;
 
 /**
  * add a file to the file tree (callback function)
@@ -52,7 +59,7 @@ static int tagsistant_add_to_fileset(void *hash_table_pointer, dbi_result result
 	while (list_tmp) {
 		tagsistant_file_handle *fh_tmp = (tagsistant_file_handle *) list_tmp->data;
 
-		if (fh_tmp && (fh_tmp->inode == inode)) {
+		if (fh_tmp && (fh_tmp->inode is inode)) {
 			g_free_null(name);
 			return (0);
 		}
@@ -172,6 +179,7 @@ gchar *tagsistant_get_rds_checksum(tagsistant_querytree *qtree)
 	return (checksum);
 }
 
+#if 0
 /*
  * Append a tag to a sources GString
  *
@@ -240,22 +248,41 @@ gchar *tagsistant_compute_rds_sources(tagsistant_querytree *qtree)
 
 	return (source_string);
 }
+#endif
 
-/*
+void tagsistant_rds_destroy_entry(gpointer *_entry)
+{
+	if (!_entry) return;
+	tagsistant_rds_entry *entry = (tagsistant_rds_entry *) _entry;
+
+	g_free(entry->name);
+	g_free(entry);
+}
+
+/**
  * Materialize the RDS of a query
  *
  * @param qtree the querytree object
  * @return the RDS checksum id
  */
-gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
+gboolean
+tagsistant_materialize_rds(tagsistant_rds *rds, tagsistant_querytree *qtree)
 {
+	/*
+	 * Declare the entries hash table
+	 */
+	rds->entries = g_hash_table_new_full(g_str_hash, g_str_equal,
+		(GDestroyNotify) g_free,
+		(GDestroyNotify) tagsistant_rds_destroy_entry
+	);
+
 	/*
 	 * If the RDS is an ALL path, just load all the objects
 	 */
 	if (rds->is_all_path) {
 		tagsistant_query(
 			"select objectname, inode from objects",
-			dbi, tagsistant_add_to_fileset, rds->entries);
+			qtree->dbi, tagsistant_add_to_fileset, rds->entries);
 
 		return (TRUE);
 	}
@@ -266,7 +293,7 @@ gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
 	 *
 	 * Step 1.1. for each qtree_or_node build a temporary table
 	 */
-	qtree_or_node *query = rds->tree;
+	qtree_or_node *query = qtree->tree;
 
 	while (query) {
 		GString *create_base_table = g_string_sized_new(51200);
@@ -293,7 +320,7 @@ gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
 		/*
 		 * create the table and dispose the statement GString
 		 */
-		tagsistant_query(create_base_table->str, dbi, NULL, NULL);
+		tagsistant_query(create_base_table->str, qtree->dbi, NULL, NULL);
 		g_string_free(create_base_table, TRUE);
 
 		/*
@@ -332,7 +359,7 @@ gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
 			/*
 			 * apply the query and dispose the statement GString
 			 */
-			tagsistant_query(cross_tag->str, dbi, NULL, NULL);
+			tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
 			g_string_free(cross_tag, TRUE);
 
 			next = next->next;
@@ -376,7 +403,7 @@ gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
 				/*
 				 * apply the query and dispose the statement GString
 				 */
-				tagsistant_query(cross_tag->str, dbi, NULL, NULL);
+				tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
 				g_string_free(cross_tag, TRUE);
 
 				negated = negated->negated;
@@ -397,7 +424,7 @@ gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
 	 */
 	GString *view_statement = g_string_sized_new(10240);
 
-	query = rds->tree;
+	query = qtree->tree;
 
 	while (query) {
 		switch (tagsistant.sql_database_driver) {
@@ -422,7 +449,7 @@ gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
 	/*
 	 * Load all the files in the RDS
 	 */
-	tagsistant_query(view_statement->str, dbi, tagsistant_add_to_fileset, rds->entries);
+	tagsistant_query(view_statement->str, qtree->dbi, tagsistant_add_to_fileset, rds->entries);
 	g_string_free(view_statement, TRUE);
 
 	/*
@@ -430,15 +457,16 @@ gboolean tagsistant_materialize_rds(tagsistant_rds *rds, dbi_conn dbi)
 	 *
 	 * drop the temporary tables
 	 */
-	query = rds->tree;
+	query = qtree->tree;
 	while (query) {
-		tagsistant_query("drop table tv%.16" PRIxPTR, dbi, NULL, NULL, (uintptr_t) query);
+		tagsistant_query("drop table tv%.16" PRIxPTR, qtree->dbi, NULL, NULL, (uintptr_t) query);
 		query = query->next;
 	}
 
 	return (TRUE);
 }
 
+#if 0
 /**
  * Deletes the oldest RDS from the rds table
  *
@@ -452,6 +480,7 @@ tagsistant_rds_delete_oldest(tagsistant_querytree *qtree)
 	dbg('f', LOG_INFO, "Garbage collector: deleting rds %d", rds_id);
 	tagsistant_query("delete from rds where id = %d", qtree->dbi, NULL, NULL, rds_id);
 }
+#endif
 
 /**
  * RDS garbage collector
@@ -499,6 +528,106 @@ tagsistant_rds_contains_object(gpointer key, gpointer value, gpointer user_data)
 	return (strcmp(e->name, match_name) is 0 ? TRUE : FALSE);
 }
 
+#if 0
+/*
+ * Lookup the id of the RDS of a query.
+ *
+ * @param query the query that generates the RDS
+ * @param materialized set to one if the RDS exists
+ * @return the RDS id
+ */
+gchar *tagsistant_get_rds_id(tagsistant_querytree *qtree, int *materialized)
+{
+	/*
+	 * compute the checksum
+	 */
+	gchar *checksum = tagsistant_get_rds_checksum(qtree);
+
+	/*
+	 * check if the RDS has been materialized
+	 */
+	tagsistant_query(
+		"select 1 from rds where id = \"%s\" and reasoned = %d limit 1",
+		qtree->dbi, tagsistant_return_integer, materialized, checksum, qtree->do_reasoning);
+
+	return (checksum);
+}
+#endif
+
+/**
+ * Add an RDS to the cache
+ *
+ * @param rds the RDS to be cached
+ */
+void tagsistant_rds_add_to_cache(tagsistant_rds *rds)
+{
+	g_rw_lock_writer_lock(&tagsistant_rds_cache_rwlock);
+	g_hash_table_insert(tagsistant_rds_cache, g_strdup(rds->checksum), rds);
+	g_rw_lock_writer_unlock(&tagsistant_rds_cache_rwlock);
+}
+
+/**
+ * Lookup and RDS into the cache
+ *
+ * @param checksum the RDS checksum
+ */
+tagsistant_rds *tagsistant_rds_lookup_in_cache(gchar *checksum)
+{
+	g_rw_lock_reader_lock(&tagsistant_rds_cache_rwlock);
+	tagsistant_rds *rds = g_hash_table_lookup(tagsistant_rds_cache, checksum);
+	g_rw_lock_reader_unlock(&tagsistant_rds_cache_rwlock);
+
+	return (rds);
+}
+
+/**
+ * Destroy an RDS
+ *
+ * @param rds the RDS to be destroyed
+ */
+void tagsistant_rds_destroy(tagsistant_rds *rds)
+{
+	if (!rds) return;
+
+	tagsistant_rds_write_lock(rds);
+
+	g_free(rds->checksum);
+	g_free(rds->path);
+
+	if (rds->entries) g_hash_table_destroy(rds->entries);
+
+#if TAGSISTANT_RDS_NEEDS_TREE
+	if (rds->tree) (void) 0; // TODO destroy the ->tree
+#endif
+
+	tagsistant_rds_write_unlock(rds);
+	g_free(rds);
+}
+
+/**
+ * Callback to tagsistant_rds_destroy() used when
+ * declaring RDS cache
+ *
+ * @param _rds a gpointer to be casted as tagsistant_rds*
+ */
+void tagsistant_rds_destroy_func(gpointer _rds)
+{
+	tagsistant_rds_destroy((tagsistant_rds *) _rds);
+}
+
+/**
+ * Initialize the RDS module
+ */
+void tagsistant_rds_init()
+{
+	tagsistant_rds_cache = g_hash_table_new_full(
+		g_str_hash /* hash keys as strings */,
+		g_str_equal /* compare keys as strings */,
+		(GDestroyNotify) g_free /* how to free keys */,
+		(GDestroyNotify) tagsistant_rds_destroy_func /* how to free values */
+	);
+}
+
 /**
  * build a linked list of filenames that satisfy the querytree
  * object. This is translated in a two phase flow:
@@ -510,6 +639,18 @@ tagsistant_rds_contains_object(gpointer key, gpointer value, gpointer user_data)
  * chain inside a super-select to apply the ORDER BY clause.
  *
  * 3. all the (temporary) tables are removed
+ *
+ * tagsistant_readdir_on_store
+ *   tagsistant_rds_new
+ *      garbage collection
+ *      if (all) materialize the rds with tagsistant_query
+ *      get the RDS ID
+ *      lookup the RDS as GHashTable from cache, using the RDS ID
+ *          if found, return it
+ *      if (!materialized) materialize the rds with tagsistant_query
+ *          create a GHashTable with RDS contents
+ *          cache it
+ *          return it
  *
  * @param query the qtree_or_node query structure to be resolved
  * @param conn a libDBI dbi_conn handle
@@ -531,10 +672,12 @@ tagsistant_rds_new(tagsistant_querytree *qtree)
 		return (NULL);
 	}
 
+#if TAGSISTANT_RDS_NEEDS_TREE
 	if (!qtree->tree) {
 		dbg('f', LOG_ERR, "NULL qtree_or_node object provided to %s", __func__);
-		return(NULL);
+		return (NULL);
 	}
+#endif
 
 	int is_all_path = is_all_path(qtree->full_path);
 
@@ -549,27 +692,59 @@ tagsistant_rds_new(tagsistant_querytree *qtree)
 
 	rds->checksum = tagsistant_get_rds_checksum(qtree);
 	rds->path = g_strdup(qtree->expanded_full_path);
+#if TAGSISTANT_RDS_NEEDS_TREE
 	rds->tree = tagsistant_duplicate_tree(qtree->tree);
+#endif
 	rds->is_all_path = is_all_path;
 
 	/*
-	 * Materialize the RDS
+	 * cache the new RDS
 	 */
-	if (!tagsistant_materialize_rds(rds, qtree->dbi)) {
-		dbg('f', LOG_ERR, "Error materializing RDS");
-		// TODO: destroy the RDS...
-		return (NULL);
-	}
-
-	/*
-	 * TODO: cache the new RDS
-	 */
+	tagsistant_rds_add_to_cache(rds);
 
 	return (rds);
 }
 
 /**
- * Lookup an RDS in the RDS registry
+ * Read lock an RDS. If the RDS has not been yet materialized,
+ * materialize it too.
+ *
+ * @param rds The RDS to be locked
+ * @param dbi a dbi_conn connection
+ */
+gboolean tagsistant_rds_read_lock(tagsistant_rds *rds, tagsistant_querytree *qtree)
+{
+	if (!rds) return (FALSE);
+	g_rw_lock_reader_lock(&rds->rwlock);
+
+	g_mutex_lock(&rds->materializer_mutex);
+	if (!rds->entries) tagsistant_materialize_rds(rds, qtree);
+	g_mutex_unlock(&rds->materializer_mutex);
+
+	return (TRUE);
+}
+
+void tagsistant_rds_read_unlock(tagsistant_rds *rds)
+{
+	if (!rds) return;
+	g_rw_lock_reader_unlock(&rds->rwlock);
+}
+
+gboolean tagsistant_rds_write_lock(tagsistant_rds *rds)
+{
+	if (!rds) return (FALSE);
+	g_rw_lock_writer_lock(&rds->rwlock);
+	return (TRUE);
+}
+
+void tagsistant_rds_write_unlock(tagsistant_rds *rds)
+{
+	if (!rds) return;
+	g_rw_lock_writer_unlock(&rds->rwlock);
+}
+
+/**
+ * Lookup an RDS in the RDS cache
  *
  * @param checksum the RDS checksum to lookup
  * @return the RDS, if found, NULL otherwise
@@ -578,18 +753,34 @@ tagsistant_rds *
 tagsistant_rds_lookup(const gchar *checksum)
 {
 	if (checksum is NULL) return (NULL);
-	return (g_hash_table_lookup(tagsistant_rds_registry, checksum));
+	return (g_hash_table_lookup(tagsistant_rds_cache, checksum));
 }
 
+/**
+ * Lookup or create an RDS based on a tagsistant_querytree object
+ *
+ * @param qtree the tagsistant_querytree source object
+ * @param writeable if the RDS must be modified, writable must be
+ *        TRUE, so the RDS will be returned write locked. Otherwise
+ *        set it to FALSE: the RDS will be read locked.
+ */
 tagsistant_rds *
 tagsistant_rds_new_or_lookup(tagsistant_querytree *qtree)
 {
-	tagsistant_rds *rds = tagsistant_rds_lookup(tagsistant_get_rds_checksum(qtree));
+	tagsistant_rds *rds = NULL;
+
+	gchar *checksum = tagsistant_get_rds_checksum(qtree);
+	if (checksum) {
+		rds = tagsistant_rds_lookup(checksum);
+		g_free(checksum);
+	}
+
 	if (rds is NULL) rds = tagsistant_rds_new(qtree);
 
 	return (rds);
 }
 
+#if 0
 /**
  * Destroy a filetree element GList list of tagsistant_file_handle.
  * This will free the GList data structure by first calling
@@ -607,30 +798,40 @@ void tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data)
 
 	if (list) g_list_free_full(list, (GDestroyNotify) g_free /* was tagsistant_filetree_destroy_value */);
 }
+#endif
 
+#if !TAGSISTANT_RDS_HARD_CLEAN
 void tagsistant_delete_rds_by_source(qtree_and_node *node, dbi_conn dbi)
 {
 	gchar *tag = (node->tag && strlen(node->tag)) ? node->tag : node->namespace;
 
 	tagsistant_query(
+		"select rds_id from rds where tagset like \"%%|%s|%%\"",
+		dbi, tagsistant_rds_uncache, NULL, tag);
+
+	tagsistant_query(
 		"delete from rds where tagset like \"%%|%s|%%\"",
 		dbi, NULL, NULL, tag);
 }
+#endif
 
 /**
  * Deletes every RDS involved with one query
+ * TODO: code a less coarse alternative, then set
+ * TAGSISTANT_RDS_HARD_CLEAN to FALSE
  *
  * @param query the query driving the deletion
  */
 void tagsistant_delete_rds_involved(tagsistant_querytree *qtree)
 {
-#if 0
-	tagsistant_query("delete from rds", qtree->dbi, NULL, NULL);
-	tagsistant_query("delete from rds_index", qtree->dbi, NULL, NULL);
-	tagsistant_query("delete from rds_tags", qtree->dbi, NULL, NULL);
+#if TAGSISTANT_RDS_HARD_CLEAN
 
-	return;
-#endif
+	(void) qtree;
+	g_rw_lock_writer_lock(&tagsistant_rds_cache_rwlock);
+	g_hash_table_remove_all(tagsistant_rds_cache);
+	g_rw_lock_writer_unlock(&tagsistant_rds_cache_rwlock);
+
+#else
 
 	/*
 	 * For every subquery, save the source tags
@@ -667,4 +868,5 @@ void tagsistant_delete_rds_involved(tagsistant_querytree *qtree)
 		}
 		query = query->next;
 	}
+#endif
 }

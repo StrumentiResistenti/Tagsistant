@@ -397,7 +397,7 @@ void tagsistant_create_schema()
 				"select version from schema_version",
 				dbi, tagsistant_return_string, &current_schema_version);
 
-			if (current_schema_version && g_strcmp0(TAGSISTANT_SCHEMA_VERSION, current_schema_version) != 0) {
+			if (current_schema_version && g_strcmp0(TAGSISTANT_SCHEMA_VERSION, current_schema_version) isNot 0) {
 				dbg('s', LOG_ERR,
 					"Required schema version %s differs from current schema version %s",
 					TAGSISTANT_SCHEMA_VERSION, current_schema_version);
@@ -507,7 +507,7 @@ void tagsistant_create_schema()
 				"select version from schema_version",
 				dbi, tagsistant_return_string, &current_schema_version);
 
-			if (current_schema_version && g_strcmp0(TAGSISTANT_SCHEMA_VERSION, current_schema_version) != 0) {
+			if (current_schema_version && g_strcmp0(TAGSISTANT_SCHEMA_VERSION, current_schema_version) isNot 0) {
 				dbg('s', LOG_ERR,
 					"Required schema version %s differs from current schema version %s",
 					TAGSISTANT_SCHEMA_VERSION, current_schema_version);
@@ -868,7 +868,7 @@ void tagsistant_wal(dbi_conn dbi, gchar *statement)
 	/*
 	 * Open the write ahead log
 	 */
-	if (-1 == fd) {
+	if (fd is -1) {
 		/*
 		 * Check if WAL directory has been created
 		 */
@@ -876,7 +876,7 @@ void tagsistant_wal(dbi_conn dbi, gchar *statement)
 		if (wal_dir) {
 			int res = mkdir(wal_dir, S_IRWXU);
 			g_free(wal_dir);
-			if ((-1 == res) && (EEXIST != errno)) {
+			if ((res is -1) && (errno isNot EEXIST)) {
 				dbg('s', LOG_ERR, "WAL: error creating WAL directory %s/wal: %s", tagsistant.repository, strerror(errno));
 				goto WAL_OUT;
 			}
@@ -887,7 +887,7 @@ void tagsistant_wal(dbi_conn dbi, gchar *statement)
 			fd = open(wal_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
 			g_free(wal_path);
 
-			if (-1 == fd) {
+			if (fd is -1) {
 				dbg('s', LOG_ERR, "WAL: unable to open log %s/wal/%s: %s", tagsistant.repository, stamp, strerror(errno));
 				return;
 			}
@@ -902,7 +902,7 @@ void tagsistant_wal(dbi_conn dbi, gchar *statement)
 	 */
 	while (line_length > 0) {
 		ssize_t written = write(fd, ptr, line_length);
-		if (-1 == written) {
+		if (written is -1) {
 			dbg('s', LOG_ERR, "WAL: error writing line: %s", strerror(errno));
 			break;
 		} else {
