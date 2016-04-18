@@ -921,15 +921,18 @@ WAL_OUT:
 /**
  * Prepare SQL queries and perform them.
  *
- * @param format printf-like string of SQL query
+ * @param dbi a dbi_conn connection
+ * @param format printf-like string with the SQL query
  * @param callback pointer to function to be called on results of SQL query
+ * @param file the file where the function is called from (see tagsistant_query() macro)
+ * @param file the file line where the function is called from (see tagsistant_query() macro)
  * @param firstarg pointer to buffer for callback returned data
- * @return 0 (always, due to SQLite policy)
+ * @return the number of selected rows
  */
 int tagsistant_real_query(
 	dbi_conn dbi,
 	const char *format,
-	int (*callback)(void *, dbi_result),
+	tagsistant_query_callback callback,
 	char *file,
 	int line,
 	void *firstarg,
@@ -941,7 +944,7 @@ int tagsistant_real_query(
 	/* check if connection has been created */
 	if (dbi is NULL) {
 		dbg('s', LOG_ERR, "ERROR! DBI connection was not initialized!");
-		return(0);
+		return (0);
 	}
 
 #if TAGSISTANT_USE_QUERY_MUTEX
@@ -955,7 +958,7 @@ int tagsistant_real_query(
 		g_mutex_unlock(&tagsistant_query_mutex);
 #endif
 		dbg('s', LOG_ERR, "ERROR! DBI Connection has gone!");
-		return(0);
+		return (0);
 	}
 
 	/* replace all the single or double quotes with "<><>" in the format */
@@ -970,7 +973,7 @@ int tagsistant_real_query(
 #endif
 		dbg('s', LOG_ERR, "Null SQL statement");
 		g_free(escaped_format);
-		return(0);
+		return (0);
 	}
 
 	/* prepend a backslash to all the single quotes inside the arguments */
@@ -1015,7 +1018,7 @@ int tagsistant_real_query(
 	g_mutex_unlock(&tagsistant_query_mutex);
 #endif
 
-	return(rows);
+	return (rows);
 }
 
 /**

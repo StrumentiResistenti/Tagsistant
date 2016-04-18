@@ -194,7 +194,8 @@ tagsistant_inode tagsistant_inode_extract_from_path(const gchar *path)
  * @param objectname the name of the object we are looking up the inode
  * @return the inode of the object if found, zero otherwise
  */
-tagsistant_inode tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, dbi_conn dbi, gchar *objectname)
+tagsistant_inode
+tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, dbi_conn dbi, gchar *objectname)
 {
 	tagsistant_inode inode = 0, guessed_inode = 0;
 
@@ -373,7 +374,10 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 	 * 1. get the object path first element
 	 */
 	gchar *object_path_first_token = g_strdup(qtree->object_path);
-	gchar *first_slash = g_strstr_len(object_path_first_token, strlen(object_path_first_token), G_DIR_SEPARATOR_S);
+
+	gchar *first_slash = g_strstr_len(object_path_first_token,
+		strlen(object_path_first_token), G_DIR_SEPARATOR_S);
+
 	if (first_slash) {
 		*first_slash = '\0';
 	} else {
@@ -386,15 +390,45 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 	tagsistant_rds *rds = tagsistant_rds_new_or_lookup(qtree);
 
 	if (rds) {
-		tagsistant_rds_read_lock(rds, qtree->dbi);
+		tagsistant_rds_read_lock(rds, qtree);
 
-		tagsistant_rds_entry *e = g_hash_table_find(rds->entries,
-			tagsistant_rds_contains_object, object_path_first_token);
+		/*
+		 * lookup all the inodes that match the object name
+		 */
+		GList *inodes = g_hash_table_lookup(rds->entries, object_path_first_token);
 
-		if (e) {
+		/*
+		 * if a GList is returned, set the querytree object as existing
+		 * and try to assign a proper inode
+		 */
+		if (inodes) {
 			qtree->exists = 1;
-			if (e->inode isNot qtree->inode) {
-				tagsistant_querytree_set_inode(qtree, e->inode);
+
+			GList *ptr = inodes;
+			GList *match = NULL;
+			while (ptr) {
+				if (ptr->data is qtree->inode) {
+					match = ptr;
+					break;
+				} else {
+					dbg('f', LOG_INFO, "%d is not %d", ptr->data, qtree->inode);
+				}
+				ptr = ptr->next;
+			}
+
+			if (match is NULL) {
+				if (qtree->inode is 0) {
+					/*
+					 * set the inode to the first available one
+					 */
+					tagsistant_querytree_set_inode(qtree, GPOINTER_TO_UINT(inodes->data));
+				} else {
+					/*
+					 * no match for an object with a provided inode
+					 * means that the object doesn't exist
+					 */
+					qtree->exists = 0;
+				}
 			}
 		}
 

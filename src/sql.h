@@ -47,14 +47,25 @@ extern void tagsistant_wal_sync();
 
 #define _safe_string(string) string ? string : ""
 
-/* execute SQL statements auto formatting the SQL string and adding file:line coords */
-#define tagsistant_query(format, conn, callback, firstarg, ...) \
-	tagsistant_real_query(conn, format, callback, __FILE__, __LINE__, firstarg, ## __VA_ARGS__)
-
 /* number of active connections */
 extern int connections;
 
-/* the real code behind the previous macro */
+/**
+ * Tagsistant query callback function type definition
+ */
+typedef int (*tagsistant_query_callback)(void *, dbi_result);
+
+/**
+ * Prepare SQL queries and perform them.
+ *
+ * @param dbi a dbi_conn connection
+ * @param format printf-like string with the SQL query
+ * @param callback pointer to function to be called on results of SQL query
+ * @param file the file where the function is called from (see tagsistant_query() macro)
+ * @param file the file line where the function is called from (see tagsistant_query() macro)
+ * @param firstarg pointer to buffer for callback returned data
+ * @return the number of selected rows
+ */
 extern int tagsistant_real_query(
 	dbi_conn conn,
 	const char *format,
@@ -63,6 +74,13 @@ extern int tagsistant_real_query(
 	int line,
 	void *firstarg,
 	...);
+
+/**
+ * execute SQL statements auto formatting the
+ * SQL string and adding file:line coords
+ */
+#define tagsistant_query(format, conn, callback, firstarg, ...) \
+	tagsistant_real_query(conn, format, callback, __FILE__, __LINE__, firstarg, ## __VA_ARGS__)
 
 /** callback to return a string */
 extern int tagsistant_return_string(void *return_string, dbi_result result);

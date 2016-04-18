@@ -40,52 +40,82 @@ GHashTable *tagsistant_rds_cache = NULL;
  * @param hash_table_pointer a GHashTable to hold results
  * @param result a DBI result
  */
-static int tagsistant_add_to_fileset(void *hash_table_pointer, dbi_result result)
+static int
+tagsistant_rds_materialize_entry(tagsistant_rds *rds, dbi_result result)
 {
-	/* Cast the hash table */
-	GHashTable *hash_table = (GHashTable *) hash_table_pointer;
+	/*
+	 * fetch query results
+	 */
+	tagsistant_inode inode = dbi_result_get_uint_idx(result, 1);
+	gchar *name = dbi_result_get_string_copy_idx(result, 2);
 
-	/* fetch query results */
-	gchar *name = dbi_result_get_string_copy_idx(result, 1);
-	if (!name) return (0);
+	dbg('f', LOG_INFO, "adding (%d,%s) to RDS %s", inode, name, rds->checksum);
 
-	tagsistant_inode inode = dbi_result_get_uint_idx(result, 2);
+	/*
+	 * lookup the GList object. Since a filename can feature more
+	 * than once with different inodes, the value of hash_table keys
+	 * is a GList that holds different inodes
+	 */
+	GList *list = (GList *) (rds->entries ? g_hash_table_lookup(rds->entries, name) : NULL);
+	list = g_list_prepend(list, GUINT_TO_POINTER(inode));
+	dbg('f', LOG_INFO, "Adding inode %d", inode);
 
-	/* lookup the GList object */
-	GList *list = g_hash_table_lookup(hash_table, name);
-
-	/* look for duplicates due to reasoning results */
-	GList *list_tmp = list;
-	while (list_tmp) {
-		tagsistant_file_handle *fh_tmp = (tagsistant_file_handle *) list_tmp->data;
-
-		if (fh_tmp && (fh_tmp->inode is inode)) {
-			g_free_null(name);
-			return (0);
-		}
-
-		list_tmp = list_tmp->next;
-	}
-
-	/* fetch query results into tagsistant_file_handle struct */
-	tagsistant_file_handle *fh = g_new0(tagsistant_file_handle, 1);
-	if (!fh) {
-		g_free_null(name);
-		return (0);
-	}
-
-	g_strlcpy(fh->name, name, 1024);
-	fh->inode = inode;
-	g_free_null(name);
-
-	/* add the new element */
-	// TODO valgrind says: check for leaks
-	g_hash_table_insert(hash_table, g_strdup(fh->name), g_list_prepend(list, fh));
-
-//	dbg('f', LOG_INFO, "adding (%d,%s) to filetree", fh->inode, fh->name);
+	/*
+	 * save the new start of the GList inside the hash table
+	 */
+	g_hash_table_insert(rds->entries, g_strdup(name), list);
 
 	return (0);
 }
+
+/**
+ * To be called once inside a g_hash_table_foreach()
+ * after RDS materializing, removes duplicated entries
+ * for each object name
+ *
+ * @param object_name the object name
+ * @param inode_list the GList with the inodes bound to the object name
+ * @param rds the tagsistant_rds object just materialized
+ */
+void
+tagsistant_rds_uniq_entries(gchar *object_name, GList *inode_list, tagsistant_rds *rds)
+{
+	/*
+	 * a GHashTable used as a set: each inode will be
+	 * recorded just once as a key of the hash table
+	 */
+	GHashTable *set = g_hash_table_new(NULL, NULL);
+
+	/*
+	 * iterate the GList elements
+	 */
+	GList *ptr = inode_list;
+	GList *edit = NULL;
+	while (ptr) {
+		GList *test = ptr;
+		ptr = ptr->next;
+
+		if (g_hash_table_contains(set, test->data)) {
+			dbg('f', LOG_INFO, "Removing duplicate inode %d", GPOINTER_TO_UINT(test->data));
+		} else {
+			g_hash_table_add(set, test->data);
+			edit = g_list_prepend(edit, test->data);
+			dbg('f', LOG_INFO, "Confirming inode %d", GPOINTER_TO_UINT(test->data));
+		}
+	}
+
+	/*
+	 * drop the hash table
+	 */
+	g_hash_table_unref (set);
+
+	/*
+	 * save the list without duplicates back in
+	 * the RDS entries hash table
+	 */
+	g_hash_table_insert(rds->entries, g_strdup(object_name), edit);
+}
+
 
 /**
  * Add a filter criterion to a WHERE clause based on a qtree_and_node object
@@ -250,15 +280,6 @@ gchar *tagsistant_compute_rds_sources(tagsistant_querytree *qtree)
 }
 #endif
 
-void tagsistant_rds_destroy_entry(gpointer *_entry)
-{
-	if (!_entry) return;
-	tagsistant_rds_entry *entry = (tagsistant_rds_entry *) _entry;
-
-	g_free(entry->name);
-	g_free(entry);
-}
-
 /**
  * Materialize the RDS of a query
  *
@@ -266,15 +287,22 @@ void tagsistant_rds_destroy_entry(gpointer *_entry)
  * @return the RDS checksum id
  */
 gboolean
-tagsistant_materialize_rds(tagsistant_rds *rds, tagsistant_querytree *qtree)
+tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 {
 	/*
 	 * Declare the entries hash table
 	 */
-	rds->entries = g_hash_table_new_full(g_str_hash, g_str_equal,
+	rds->entries = g_hash_table_new_full(
+		g_str_hash, g_str_equal,
 		(GDestroyNotify) g_free,
-		(GDestroyNotify) tagsistant_rds_destroy_entry
+		(GDestroyNotify) g_list_free
 	);
+
+	if (!rds->entries) {
+		dbg('f', LOG_ERR, "Error allocating RDS entries");
+		return (FALSE);
+	}
+	g_hash_table_ref(rds->entries);
 
 	/*
 	 * If the RDS is an ALL path, just load all the objects
@@ -282,8 +310,14 @@ tagsistant_materialize_rds(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	if (rds->is_all_path) {
 		tagsistant_query(
 			"select objectname, inode from objects",
-			qtree->dbi, tagsistant_add_to_fileset, rds->entries);
+			qtree->dbi,
+			(tagsistant_query_callback) tagsistant_rds_materialize_entry,
+			rds);
 
+		/*
+		 * remove entry duplicates
+		 */
+		g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_rds_uniq_entries, rds);
 		return (TRUE);
 	}
 
@@ -449,8 +483,15 @@ tagsistant_materialize_rds(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	/*
 	 * Load all the files in the RDS
 	 */
-	tagsistant_query(view_statement->str, qtree->dbi, tagsistant_add_to_fileset, rds->entries);
+	tagsistant_query(view_statement->str, qtree->dbi,
+		(tagsistant_query_callback) tagsistant_rds_materialize_entry, rds);
+
 	g_string_free(view_statement, TRUE);
+
+	/*
+	 * remove entry duplicates
+	 */
+	g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_rds_uniq_entries, rds);
 
 	/*
 	 * PHASE 3.
@@ -525,6 +566,7 @@ tagsistant_rds_contains_object(gpointer key, gpointer value, gpointer user_data)
 	tagsistant_rds_entry *e = (tagsistant_rds_entry *) value;
 	gchar *match_name = (gchar *) user_data;
 
+	if (e is NULL || e->name is NULL) return (FALSE);
 	return (strcmp(e->name, match_name) is 0 ? TRUE : FALSE);
 }
 
@@ -590,6 +632,7 @@ void tagsistant_rds_destroy(tagsistant_rds *rds)
 	if (!rds) return;
 
 	tagsistant_rds_write_lock(rds);
+	dbg('f', LOG_INFO, "Destroying RDS %s", rds->checksum);
 
 	g_free(rds->checksum);
 	g_free(rds->path);
@@ -621,9 +664,9 @@ void tagsistant_rds_destroy_func(gpointer _rds)
 void tagsistant_rds_init()
 {
 	tagsistant_rds_cache = g_hash_table_new_full(
-		g_str_hash /* hash keys as strings */,
-		g_str_equal /* compare keys as strings */,
-		(GDestroyNotify) g_free /* how to free keys */,
+		g_str_hash, /* hash keys as strings */
+		g_str_equal, /* compare keys as strings */
+		(GDestroyNotify) g_free, /* how to free keys */
 		(GDestroyNotify) tagsistant_rds_destroy_func /* how to free values */
 	);
 }
@@ -696,6 +739,7 @@ tagsistant_rds_new(tagsistant_querytree *qtree)
 	rds->tree = tagsistant_duplicate_tree(qtree->tree);
 #endif
 	rds->is_all_path = is_all_path;
+	rds->entries = NULL;
 
 	/*
 	 * cache the new RDS
@@ -718,7 +762,7 @@ gboolean tagsistant_rds_read_lock(tagsistant_rds *rds, tagsistant_querytree *qtr
 	g_rw_lock_reader_lock(&rds->rwlock);
 
 	g_mutex_lock(&rds->materializer_mutex);
-	if (!rds->entries) tagsistant_materialize_rds(rds, qtree);
+	if (!rds->entries) tagsistant_rds_materialize(rds, qtree);
 	g_mutex_unlock(&rds->materializer_mutex);
 
 	return (TRUE);
@@ -780,26 +824,6 @@ tagsistant_rds_new_or_lookup(tagsistant_querytree *qtree)
 	return (rds);
 }
 
-#if 0
-/**
- * Destroy a filetree element GList list of tagsistant_file_handle.
- * This will free the GList data structure by first calling
- * tagsistant_filetree_destroy_value() on each linked node.
- *
- * @param key the entry of the GHashTable element to be cleared
- * @param list the value of the GHashTable element to be cleared which is a GList object
- * @param data unused
- */
-void tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data)
-{
-	(void) data;
-
-	g_free_null(key);
-
-	if (list) g_list_free_full(list, (GDestroyNotify) g_free /* was tagsistant_filetree_destroy_value */);
-}
-#endif
-
 #if !TAGSISTANT_RDS_HARD_CLEAN
 void tagsistant_delete_rds_by_source(qtree_and_node *node, dbi_conn dbi)
 {
@@ -816,8 +840,36 @@ void tagsistant_delete_rds_by_source(qtree_and_node *node, dbi_conn dbi)
 #endif
 
 /**
+ * Destroy an RDS entry hash table
+ *
+ * @param key unused
+ * @param rds the RDS to dematerialize
+ * @param unused an unused field
+ */
+void
+tagsistant_rds_dematerialize(gpointer key, tagsistant_rds *rds, gpointer unused)
+{
+	(void) key;
+	(void) unused;
+	if (!rds) return;
+
+	/*
+	 * destroy the hash table and set its field to NULL
+	 * to signal that the RDS has been de-materialized
+	 */
+	tagsistant_rds_write_lock(rds);
+	if (rds->entries) {
+		g_hash_table_destroy(rds->entries);
+		rds->entries = NULL;
+	}
+	tagsistant_rds_write_unlock(rds);
+}
+
+/**
  * Deletes every RDS involved with one query
- * TODO: code a less coarse alternative, then set
+ *
+ * TODO: current implementation just deletes EVERY RDS.
+ * Code a less coarse alternative, then set
  * TAGSISTANT_RDS_HARD_CLEAN to FALSE
  *
  * @param query the query driving the deletion
@@ -828,7 +880,8 @@ void tagsistant_delete_rds_involved(tagsistant_querytree *qtree)
 
 	(void) qtree;
 	g_rw_lock_writer_lock(&tagsistant_rds_cache_rwlock);
-	g_hash_table_remove_all(tagsistant_rds_cache);
+	// g_hash_table_remove_all(tagsistant_rds_cache);
+	g_hash_table_foreach(tagsistant_rds_cache, (GHFunc) tagsistant_rds_dematerialize, NULL);
 	g_rw_lock_writer_unlock(&tagsistant_rds_cache_rwlock);
 
 #else

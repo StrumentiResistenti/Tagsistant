@@ -85,40 +85,39 @@ static int tagsistant_add_entry_to_dir(void *filler_ptr, dbi_result result)
  * @param ufs a context structure
  * @return 0 always
  */
-static int tagsistant_readdir_on_store_filler(gchar *name, GList *fh_list, struct tagsistant_use_filler_struct *ufs)
+static int
+tagsistant_readdir_on_store_filler(
+	gchar *name,
+	GList *inode_list,
+	struct tagsistant_use_filler_struct *ufs)
 {
-	(void) name;
+	if (inode_list is NULL) return (0);
 
-	if (!fh_list) return (0);
-
-	if (fh_list is NULL) return (0);
-
-	if (!(fh_list->next)) {
-		// just add the filename
-		tagsistant_file_handle *fh = fh_list->data;
-
-		if (!fh) return (0);
-
+	if (inode_list->next is NULL) {
+		/*
+		 * single entry, just add the filename
+		 */
 		if (ufs->qtree->force_inode_in_filenames) {
-			gchar *filename = g_strdup_printf("%d%s%s", fh->inode, TAGSISTANT_INODE_DELIMITER, fh->name);
+			tagsistant_inode inode = GPOINTER_TO_UINT(inode_list->data);
+			gchar *filename = g_strdup_printf("%d%s%s",	inode, TAGSISTANT_INODE_DELIMITER, name);
 			ufs->filler(ufs->buf, filename, NULL, 0);
 			g_free_null(filename);
 		} else {
-			ufs->filler(ufs->buf, fh->name, NULL, 0);
+			ufs->filler(ufs->buf, name, NULL, 0);
 		}
 
 		return (0);
 	}
 
-	// add inodes to filenames
-	while (fh_list) {
-		tagsistant_file_handle *fh = fh_list->data;
-		if (fh) {
-			gchar *filename = g_strdup_printf("%d%s%s", fh->inode, TAGSISTANT_INODE_DELIMITER, fh->name);
-			ufs->filler(ufs->buf, filename, NULL, 0);
-			g_free_null(filename);
-		}
-		fh_list = fh_list->next;
+	/*
+	 * add all the inodes as separate entries
+	 */
+	while (inode_list) {
+		tagsistant_inode inode = GPOINTER_TO_UINT(inode_list->data);
+		gchar *filename = g_strdup_printf("%d%s%s", inode, TAGSISTANT_INODE_DELIMITER, name);
+		ufs->filler(ufs->buf, filename, NULL, 0);
+		g_free_null(filename);
+		inode_list = inode_list->next;
 	}
 
 	return (0);
@@ -259,11 +258,13 @@ int tagsistant_readdir_on_store(
 		} else {
 			/* build the filetree */
 			tagsistant_rds *rds = tagsistant_rds_new_or_lookup(qtree);
-			if (!rds) { /* TODO cope with this */ }
-
-			tagsistant_rds_read_lock(rds, qtree->dbi);
-			g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_readdir_on_store_filler, ufs);
-			tagsistant_rds_read_unlock(rds);
+			if (rds) {
+				tagsistant_rds_read_lock(rds, qtree->dbi);
+				g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_readdir_on_store_filler, ufs);
+				tagsistant_rds_read_unlock(rds);
+			} else {
+				dbg('F', LOG_ERR, "Unable to get an RDS when readdir(%s)", qtree->full_archive_path);
+			}
 		}
 	} else {
 

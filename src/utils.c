@@ -112,14 +112,21 @@ void tagsistant_show_config()
  * @param tagsistant_errno error_reporting variable
  * @param force_create boolean: if true, creation is forced
  */
-int tagsistant_inner_create_and_tag_object(tagsistant_querytree *qtree, int *tagsistant_errno, int force_create)
+int
+tagsistant_inner_create_and_tag_object(
+	tagsistant_querytree *qtree,
+	int *tagsistant_errno,
+	int force_create)
 {
 	tagsistant_inode inode = 0;
 
-	// 1. create the object on db or get its inode if exists
-	//    if force_create is true, create a new object and fetch its inode
-	//    if force_create is false, try to find an object with name and path matching
-	//    and use its inode, otherwise create a new one
+	/*
+	 * 1. create the object on db or get its inode if exists
+	 *    if force_create is true, create a new object and
+	 *    fetch its inode if force_create is false, try to
+	 *    find an object with name and path matching
+	 *    and use its inode, otherwise create a new one
+	 */
 	if (!force_create) {
 		tagsistant_query(
 			"select inode from objects where objectname = '%s' limit 1",
@@ -143,10 +150,14 @@ int tagsistant_inner_create_and_tag_object(tagsistant_querytree *qtree, int *tag
 		return(-1);
 	}
 
-	// 2. adjust archive_path and full_archive_path with leading inode
+	/*
+	 *  2. adjust archive_path and full_archive_path with leading inode
+	 */
 	tagsistant_querytree_set_inode(qtree, inode);
 
-	// 3. tag the object
+	/*
+	 *  3. tag the object
+	 */
 	tagsistant_querytree_traverse(qtree, tagsistant_sql_tag_object, inode);
 
 	if (force_create) {

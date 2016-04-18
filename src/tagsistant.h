@@ -306,6 +306,7 @@ extern void tagsistant_schedule_for_autotagging(tagsistant_querytree *qtree);
  * Fuse operations logging macros.
  * Enabled or disabled by TAGSISTANT_VERBOSE_LOGGING.
  */
+#define TAGSISTANT_VERBOSE_LOGGING TRUE
 #if TAGSISTANT_VERBOSE_LOGGING
 
 #	define TAGSISTANT_START(line, ...) dbg('f', LOG_INFO, line, ##__VA_ARGS__);
@@ -403,9 +404,8 @@ typedef struct {
 
 extern tagsistant_rds *	tagsistant_rds_new_or_lookup(tagsistant_querytree *qtree);
 extern tagsistant_rds *	tagsistant_rds_new(tagsistant_querytree *qtree);
-extern void				tagsistant_rds_destroy_value_list(gchar *key, GList *list, gpointer data);
 extern void				tagsistant_delete_rds_involved(tagsistant_querytree *qtree);
-extern gboolean			tagsistant_materialize_rds(tagsistant_rds *rds, tagsistant_querytree *qtree);
+extern gboolean			tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree);
 extern gchar *			tagsistant_get_rds_checksum(tagsistant_querytree *qtree);
 extern tagsistant_rds *	tagsistant_rds_lookup(const gchar *checksum);
 extern gboolean			tagsistant_rds_contains_object(gpointer key, gpointer value, gpointer user_data);
