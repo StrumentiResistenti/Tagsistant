@@ -407,11 +407,11 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 			GList *ptr = inodes;
 			GList *match = NULL;
 			while (ptr) {
-				if (ptr->data is qtree->inode) {
+				if (GPOINTER_TO_INT(ptr->data) is qtree->inode) {
 					match = ptr;
 					break;
 				} else {
-					dbg('f', LOG_INFO, "%d is not %d", ptr->data, qtree->inode);
+					dbg('f', LOG_INFO, "%d is not %d", GPOINTER_TO_INT(ptr->data), qtree->inode);
 				}
 				ptr = ptr->next;
 			}

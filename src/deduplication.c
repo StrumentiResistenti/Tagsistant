@@ -122,6 +122,11 @@ int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gchar *hex
 	 */
 	qtree->schedule_for_unlink = 1;
 
+	/*
+	 * invalidate the RDS cache
+	 */
+	tagsistant_delete_rds_involved(qtree);
+
 #if TAGSISTANT_ENABLE_AND_SET_CACHE
 	/*
 	 * invalidate the and_set cache
