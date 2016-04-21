@@ -57,7 +57,7 @@ tagsistant_rds_materialize_entry(tagsistant_rds *rds, dbi_result result)
 	 * is a GList that holds different inodes
 	 */
 	GList *list = (GList *) (rds->entries ? g_hash_table_lookup(rds->entries, name) : NULL);
-	list = g_list_prepend(list, GINT_TO_POINTER(inode));
+	list = g_list_prepend(list, GUINT_TO_POINTER(inode));
 	dbg('f', LOG_INFO, "Adding inode %d, list holds %d elements", inode, g_list_length(list));
 
 	/*
@@ -96,10 +96,10 @@ tagsistant_rds_uniq_entries(gchar *object_name, GList *inode_list, tagsistant_rd
 	while (ptr) {
 		if (g_hash_table_contains(set, ptr->data)) {
 			inode_list = g_list_delete_link(inode_list, ptr);
-			// dbg('f', LOG_INFO, "Removing duplicate inode %d", GPOINTER_TO_INT(ptr->data));
+			// dbg('f', LOG_INFO, "Removing duplicate inode %d", GPOINTER_TO_UINT(ptr->data));
 		} else {
 			g_hash_table_add(set, ptr->data);
-			// dbg('f', LOG_INFO, "Confirming inode %d", GPOINTER_TO_INT(ptr->data));
+			// dbg('f', LOG_INFO, "Confirming inode %d", GPOINTER_TO_UINT(ptr->data));
 		}
 
 		ptr = ptr->next;
