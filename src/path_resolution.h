@@ -107,6 +107,7 @@ typedef enum {
 	QTYPE_STATS,		// path that's a special query for internal status, begins with /stats/
 	QTYPE_STORE,		// where the files are tagged and accessed
 	QTYPE_ALIAS,		// where query aliases (bookmarks) are kept
+	QTYPE_EXPORT,		// an exportable view of tagged objects
 	QTYPE_TOTAL
 } tagsistant_query_type;
 
@@ -125,15 +126,16 @@ extern gchar *tagsistant_querytree_types[QTYPE_TOTAL];
  * to ease coding, there are some macros to check
  * if a query if of a given type
  */
-#define QTREE_IS_MALFORMED(qtree)	(QTYPE_MALFORMED is qtree->type)
-#define QTREE_IS_ROOT(qtree)		(QTYPE_ROOT is qtree->type)
-#define QTREE_IS_TAGS(qtree)		(QTYPE_TAGS is qtree->type)
-#define QTREE_IS_ARCHIVE(qtree)		(QTYPE_ARCHIVE is qtree->type)
-#define QTREE_IS_RELATIONS(qtree)	(QTYPE_RELATIONS is qtree->type)
-#define QTREE_IS_STATS(qtree)		(QTYPE_STATS is qtree->type)
-#define QTREE_IS_RETAG(qtree)		(QTYPE_RETAG is qtree->type)
-#define QTREE_IS_STORE(qtree)		(QTYPE_STORE is qtree->type)
-#define QTREE_IS_ALIAS(qtree)		(QTYPE_ALIAS is qtree->type)
+#define QTREE_IS_MALFORMED(qtree)	(qtree->type is QTYPE_MALFORMED)
+#define QTREE_IS_ROOT(qtree)		(qtree->type is QTYPE_ROOT)
+#define QTREE_IS_TAGS(qtree)		(qtree->type is QTYPE_TAGS)
+#define QTREE_IS_ARCHIVE(qtree)		(qtree->type is QTYPE_ARCHIVE)
+#define QTREE_IS_RELATIONS(qtree)	(qtree->type is QTYPE_RELATIONS)
+#define QTREE_IS_STATS(qtree)		(qtree->type is QTYPE_STATS)
+#define QTREE_IS_RETAG(qtree)		(qtree->type is QTYPE_RETAG)
+#define QTREE_IS_STORE(qtree)		(qtree->type is QTYPE_STORE)
+#define QTREE_IS_ALIAS(qtree)		(qtree->type is QTYPE_ALIAS)
+#define QTREE_IS_EXPORT(qtree)		(qtree->type is QTYPE_EXPORT)
 
 /*
  * if a query points to an object on disk this returns true;

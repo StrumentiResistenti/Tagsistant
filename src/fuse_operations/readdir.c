@@ -66,15 +66,67 @@ static int tagsistant_add_entry_to_dir(void *filler_ptr, dbi_result result)
 		}
 	}
 
-	// add the entry as is if it's not an alias
-	if (!ufs->is_alias) return(ufs->filler(ufs->buf, dir, NULL, 0));
+	if (ufs->is_alias) {
+		/*
+		 *  prepend the alias identified otherwise
+		 */
+		gchar *entry = g_strdup_printf("=%s", dir);
+		int filler_result = ufs->filler(ufs->buf, entry, NULL, 0);
+		g_free(entry);
+		return (filler_result);
+	} else if (ufs->qtree->force_inode_in_filenames) {
+		/*
+		 * force the inode in the object name, assuming a second field
+		 * provides the inode
+		 */
+		const char *inode = dbi_result_get_string_idx(result, 2);
+		if (inode) {
+			gchar *entry = g_strdup_printf("%s%s%s", inode, TAGSISTANT_INODE_DELIMITER, dir);
+			int filler_result = ufs->filler(ufs->buf, entry, NULL, 0);
+			g_free(entry);
+			return (filler_result);
+		} else {
+			return(ufs->filler(ufs->buf, dir, NULL, 0));
+		}
+	} else {
+		/*
+		 * add the entry as is if it's not an alias
+		 */
+		return(ufs->filler(ufs->buf, dir, NULL, 0));
+	}
+}
 
-	// prepend the alias identified otherwise
-	gchar *entry = g_strdup_printf("=%s", dir);
-	int filler_result = ufs->filler(ufs->buf, entry, NULL, 0);
-	g_free(entry);
+/**
+ * Add a tag while listing the export/ first level directory
+ *
+ * @param filler_ptr a pointer to a tagsistant_use_filler_struct struct
+ * @param result the result of the SQL query to be accessed by DBI methods
+ */
+static int tagsistant_add_tag_to_export(void *filler_ptr, dbi_result result)
+{
+	struct tagsistant_use_filler_struct *ufs = (struct tagsistant_use_filler_struct *) filler_ptr;
+	const char *tag_or_namespace = dbi_result_get_string_idx(result, 1);
 
-	return (filler_result);
+	/* this must be the last value, just exit */
+	if (tag_or_namespace is NULL) return(0);
+
+	/*
+	 * zero-length values can be returned while listing triple tags
+	 * we must suppress them, but returning 1, to prevent the callback
+	 * from exiting its cycle
+	 */
+	if (strlen(tag_or_namespace) is 0) return (1);
+
+	if (g_regex_match_simple(":$", tag_or_namespace, G_REGEX_EXTENDED, 0)) {
+		const char *key = dbi_result_get_string_idx(result, 1);
+		const char *value = dbi_result_get_string_idx(result, 2);
+		gchar *entry = g_strdup_printf("%s:%s=%s", tag_or_namespace, key, value);
+		int result = ufs->filler(ufs->buf, entry, NULL, 0);
+		g_free(entry);
+		return (result);
+	} else {
+		return (ufs->filler(ufs->buf, tag_or_namespace, NULL, 0));
+	}
 }
 
 /**
@@ -658,6 +710,94 @@ int tagsistant_readdir_on_alias(
 	return (0);
 }
 
+/**
+ * Read the content of the export/ directory
+ */
+int tagsistant_readdir_on_export(
+	tagsistant_querytree *qtree,
+	const char *path,
+	void *buf,
+	fuse_fill_dir_t filler,
+	int *tagsistant_errno)
+{
+	/*
+	 * list the object contents
+	 */
+	if (qtree->inode)
+		return (tagsistant_readdir_on_object(qtree, path, buf, filler, tagsistant_errno));
+
+	struct tagsistant_use_filler_struct *ufs = g_new0(struct tagsistant_use_filler_struct, 1);
+	if (ufs is NULL) {
+		dbg('F', LOG_ERR, "Error allocating memory @%s:%d", __FILE__, __LINE__);
+		*tagsistant_errno = EBADF;
+		return (-1);
+	}
+
+	ufs->filler = filler;
+	ufs->buf = buf;
+	ufs->path = path;
+	ufs->qtree = qtree;
+
+	/*
+	 * list all the tags
+	 */
+	if (!qtree->last_tag) {
+		filler(buf, ".", NULL, 0);
+		filler(buf, "..", NULL, 0);
+
+		tagsistant_query(
+			"select tagname, key, value from tags",
+			qtree->dbi, tagsistant_add_tag_to_export, ufs);
+	} else {
+		filler(buf, ".", NULL, 0);
+		filler(buf, "..", NULL, 0);
+
+		/*
+		 * list all the objects linked by a tag
+		 */
+		qtree->force_inode_in_filenames = 1;
+
+		GError *error = NULL;
+		GRegex *rx = g_regex_new("([^:]+):([^=]+)=(.*)", G_REGEX_EXTENDED, 0, &error);
+
+		if ((error is NULL) && (rx)) {
+			GMatchInfo *match_info;
+			g_regex_match(rx, qtree->last_tag, 0, &match_info);
+
+			if (g_match_info_matches(match_info)) {
+				gchar *namespace = g_match_info_fetch(match_info, 1);
+				gchar *key = g_match_info_fetch(match_info, 2);
+				gchar *value = g_match_info_fetch(match_info, 3);
+
+				tagsistant_query(
+					"select objectname, cast(inode as string) from objects "
+						"join tagging on tagging.inode = object.inode "
+						"join tags on tags.tag_id = tagging.tag_id "
+						"where tagname = \"%s\" and `key` = \"%s\" and value = \"%s\"",
+					qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->namespace, qtree->key, qtree->value);
+
+				g_free(namespace);
+				g_free(key);
+				g_free(value);
+			} else {
+				tagsistant_query(
+					"select objectname, cast(objects.inode as string) from objects "
+						"join tagging on tagging.inode = objects.inode "
+						"join tags on tags.tag_id = tagging.tag_id "
+						"where tagname = \"%s\"",
+					qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->last_tag);
+			}
+
+			g_match_info_free(match_info);
+		}
+
+		g_regex_unref(rx);
+	}
+
+	g_free(ufs);
+	return (1);
+}
+
 
 /**
  * readdir equivalent (in FUSE paradigm)
@@ -694,6 +834,7 @@ int tagsistant_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_
 		filler(buf, "..", NULL, 0);
 		filler(buf, "alias", NULL, 0);
 		filler(buf, "archive", NULL, 0);
+		filler(buf, "export", NULL, 0);
 		filler(buf, "relations", NULL, 0);
 //		filler(buf, "retag", NULL, 0);
 		filler(buf, "stats", NULL, 0);
@@ -715,6 +856,8 @@ int tagsistant_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_
 	} else if (QTREE_IS_ALIAS(qtree)) {
 		res = tagsistant_readdir_on_alias(qtree, path, buf, filler, &tagsistant_errno);
 
+	} else if (QTREE_IS_EXPORT(qtree)) {
+		res = tagsistant_readdir_on_export(qtree, path, buf, filler, &tagsistant_errno);
 	}
 
 TAGSISTANT_EXIT_OPERATION:

@@ -49,6 +49,22 @@ int tagsistant_readlink(const char *path, char *buf, size_t size)
 		readlink_path = qtree->full_archive_path;
 	}
 
+	// -- export --
+	else if (QTREE_IS_EXPORT(qtree)) {
+		if (qtree->inode) {
+			/*
+			 * go back once for the tag and again for the export/ dir,
+			 * then enter archive, the whole stack of reversed inode and
+			 * finally put the filename here
+			 */
+			gchar *tmp = g_strdup_printf("../../archive/%s", qtree->archive_path);
+			res = strlen(tmp);
+			memcpy(buf, tmp, res);
+			g_free(tmp);
+		}
+		goto TAGSISTANT_EXIT_OPERATION;
+	}
+
 	// -- alias --
 	// -- stats --
 	// -- tags --

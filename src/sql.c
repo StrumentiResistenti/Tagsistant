@@ -227,8 +227,10 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 	dbi_conn dbi = NULL;
 
 	if (start_transaction) {
+		dbg('s', LOG_ERR, "Writer-locking query rwlock");
 		g_rw_lock_writer_lock(&(tagsistant_query_rwlock));
 	} else {
+		dbg('s', LOG_ERR, "Read-locking query rwlock");
 		g_rw_lock_reader_lock(&(tagsistant_query_rwlock));
 	}
 
@@ -361,8 +363,10 @@ void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_locked)
 	g_mutex_unlock(&tagsistant_connection_pool_lock);
 
 	if (is_writer_locked) {
+		dbg('s', LOG_ERR, "Writer-un-locking query rwlock");
 		g_rw_lock_writer_unlock(&tagsistant_query_rwlock);
 	} else {
+		dbg('s', LOG_ERR, "Reader-un-locking query rwlock");
 		g_rw_lock_reader_unlock(&tagsistant_query_rwlock);
 	}
 }

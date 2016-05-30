@@ -150,7 +150,8 @@ int tagsistant_check_single_tagging(qtree_and_node *and, dbi_conn dbi, gchar *ob
 }
 
 /**
- * return the tagsistant inode contained into a path
+ * return the tagsistant inode contained into a path. If no inode
+ * is included in the object name, 0 is returned
  *
  * @param qtree the querytree object supposed to contain an inode
  * @return the inode, if found
@@ -449,6 +450,9 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 
 /** get the value of the next token (could be NULL) */
 #define __NEXT_TOKEN *(*token_ptr + 1)
+
+/** get the value of the token n (next token has n == 0) */
+#define __NTH_TOKEN(n) *(*token_ptr + n)
 
 /** move the pointer to the next token */
 #define __SLIDE_TOKEN (*token_ptr)++;
@@ -1123,6 +1127,59 @@ int tagsistant_querytree_parse_archive(
 	return (1);
 }
 
+
+int tagsistant_querytree_parse_export(
+	tagsistant_querytree* qtree,
+	gchar ***token_ptr)
+{
+	/*
+	 * no token (this is export/) -> list all the tags
+	 */
+	if (!__TOKEN) return (1);
+
+	/*
+	 * the first token is the tag
+	 */
+	qtree->last_tag = g_strdup(__TOKEN);
+
+	if (__NEXT_TOKEN) {
+		/*
+		 * two tokens  with inode (this is export/tag/1234___object) -> set the object inode
+		 */
+		qtree->object_path = __NEXT_TOKEN; // g_strjoinv(G_DIR_SEPARATOR_S, *token_ptr);
+		qtree->inode = tagsistant_inode_extract_from_path(qtree->object_path);
+
+		if (qtree->inode) {
+			/*
+			 * replace the inode and the separator with a blank string,
+			 * actually stripping it from the object_path
+			 */
+			gchar *new_object_path = g_regex_replace(
+				tagsistant_inode_extract_from_path_regex_1,
+				qtree->object_path,
+				strlen(qtree->object_path),
+				0, "", 0, NULL);
+
+			g_free(qtree->object_path);
+			qtree->object_path = new_object_path;
+
+			tagsistant_querytree_set_inode(qtree, qtree->inode);
+
+			if (strlen(qtree->object_path) is 0) {
+				qtree->archive_path = g_strdup("");
+				qtree->full_archive_path = g_strdup(tagsistant.archive);
+			} else {
+				gchar *reversed_inode = tagsistant_get_reversed_inode_tree(qtree->inode);
+				qtree->archive_path = g_strdup_printf("%s/%d%s%s", reversed_inode, qtree->inode, TAGSISTANT_INODE_DELIMITER, qtree->object_path);
+				qtree->full_archive_path = g_strdup_printf("%s/%s", tagsistant.archive, qtree->archive_path);
+				g_free(reversed_inode);
+			}
+		}
+	}
+
+	return (1);
+}
+
 /**
  * return the directory structure derived from the reverse path of
  * an inode. If the inode was 1985 and TAGSISTANT_ARCHIVE_DEPTH was 3,
@@ -1688,6 +1745,7 @@ tagsistant_querytree *tagsistant_querytree_new(
 	else if (g_strcmp0(*token_ptr, "alias") is 0)		qtree->type = QTYPE_ALIAS;
 	else if (g_strcmp0(*token_ptr, "archive") is 0)		qtree->type = QTYPE_ARCHIVE;
 	else if (g_strcmp0(*token_ptr, "stats") is 0)		qtree->type = QTYPE_STATS;
+	else if (g_strcmp0(*token_ptr, "export") is 0)		qtree->type = QTYPE_EXPORT;
 	else {
 		qtree->type = QTYPE_MALFORMED;
 		dbg('q', LOG_ERR, "Malformed or not existing path (%s)", path);
@@ -1714,6 +1772,8 @@ tagsistant_querytree *tagsistant_querytree_new(
 		tagsistant_querytree_parse_alias(qtree, &token_ptr);
 	} else if (QTREE_IS_ARCHIVE(qtree)) {
 		tagsistant_querytree_parse_archive(qtree, &token_ptr);
+	} else if (QTREE_IS_EXPORT(qtree)) {
+		tagsistant_querytree_parse_export(qtree, &token_ptr);
 	}
 
 	/*
@@ -1851,6 +1911,8 @@ void tagsistant_querytree_destroy(tagsistant_querytree *qtree, guint commit_tran
 		g_free_null(qtree->relation);
 	} else if (QTREE_IS_STATS(qtree)) {
 		g_free_null(qtree->stats_path);
+	} else if (QTREE_IS_EXPORT(qtree)) {
+		g_free_null(qtree->last_tag);
 	}
 
 	// free the structure

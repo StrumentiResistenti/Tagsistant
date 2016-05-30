@@ -190,6 +190,15 @@ int tagsistant_getattr(const char *path, struct stat *stbuf)
 			TAGSISTANT_ABORT_OPERATION(ENOENT);
 	}
 
+	// -- export --
+	else if (QTREE_IS_EXPORT(qtree)) {
+		if (!qtree->inode) {
+			lstat_path = tagsistant.archive;
+		} else {
+			lstat_path = qtree->full_archive_path;
+		}
+	}
+
 	// -- store (incomplete) --
 	// -- tags --
 	// -- archive (the directory itself) --
@@ -322,6 +331,12 @@ int tagsistant_getattr(const char *path, struct stat *stbuf)
 	} else if (QTREE_IS_ARCHIVE(qtree)) {
 
 		stbuf->st_mode |= _PERMISSIONS;
+
+	} else if (QTREE_IS_EXPORT(qtree)) {
+
+		if (lstat_path is qtree->full_archive_path) {
+			stbuf->st_mode = S_IFLNK|_RELAXED_PERMISSIONS;
+		}
 
 	}
 
