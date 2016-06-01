@@ -459,7 +459,10 @@ gchar *tagsistant_get_file_tags(tagsistant_querytree *qtree)
 	/* free the stripped path */
 	g_free(stripped_path);
 	
-	if (!stripped_qtree->inode) return (NULL);
+	if (!stripped_qtree->inode) {
+		tagsistant_querytree_destroy(stripped_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
+		return (NULL);
+	}
 	
 	/* allocate a buffer GString and fill it with the tags bound to the file */
 	GString *tagsbuffer = g_string_sized_new(1024);

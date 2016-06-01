@@ -204,29 +204,22 @@ gpointer tagsistant_deduplication_kernel(gpointer data)
 				/* destroy the checksum object */
 				g_checksum_free(checksum);
 
-				/* re-create the qtree object */
-				// qtree = tagsistant_querytree_new(path, 0, 1, 1, 1);
+				/*
+				 * save the string into the objects table
+				 */
+				tagsistant_query(
+					"update objects set checksum = '%s' where inode = %d",
+					qtree->dbi, NULL, NULL, hex, qtree->inode);
 
-				if (qtree) {
+				/*
+				 * look for duplicated objects
+				 */
+				if (tagsistant_querytree_find_duplicates(qtree, hex)) {
 					/*
-					 * save the string into the objects table
+					 * before destroying the qtree, we build the string
+					 * to schedule the object for autotagging
 					 */
-					tagsistant_query(
-						"update objects set checksum = '%s' where inode = %d",
-						qtree->dbi, NULL, NULL, hex, qtree->inode);
-	
-					/*
-					 * look for duplicated objects
-					 */
-					if (tagsistant_querytree_find_duplicates(qtree, hex)) {
-						/*
-						 * before destroying the qtree, we build the string
-						 * to schedule the object for autotagging
-						 */
-						tagsistant_schedule_for_autotagging(qtree);
-					}
-
-					tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
+					tagsistant_schedule_for_autotagging(qtree);
 				}
 
 				/* free the hex checksum string */
@@ -235,6 +228,7 @@ gpointer tagsistant_deduplication_kernel(gpointer data)
 		}
 
 		close(fd);
+		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 	}
 
 	return (NULL);

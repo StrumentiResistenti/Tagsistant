@@ -427,7 +427,7 @@ void tagsistant_create_schema()
 				"create table if not exists objects ("
 					"inode integer not null primary key autoincrement, "
 					"objectname text(255) not null, "
-					"last_autotag timestamp not null default 0, "
+					"last_autotag timestamp not null, "
 					"checksum text(40) not null default '', "
 					"symlink text(1024) not null default '')",
 				dbi, NULL, NULL);

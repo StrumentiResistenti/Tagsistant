@@ -118,12 +118,20 @@ static int tagsistant_add_tag_to_export(void *filler_ptr, dbi_result result)
 	if (strlen(tag_or_namespace) is 0) return (1);
 
 	if (g_regex_match_simple(":$", tag_or_namespace, G_REGEX_EXTENDED, 0)) {
-		const char *key = dbi_result_get_string_idx(result, 1);
-		const char *value = dbi_result_get_string_idx(result, 2);
-		gchar *entry = g_strdup_printf("%s:%s=%s", tag_or_namespace, key, value);
-		int result = ufs->filler(ufs->buf, entry, NULL, 0);
-		g_free(entry);
-		return (result);
+		const char *key = dbi_result_get_string_idx(result, 2);
+		const char *value = dbi_result_get_string_idx(result, 3);
+
+		if (strlen(value) > 0) {
+			gchar *entry = g_strdup_printf("%s%s=%s", tag_or_namespace, key, value);
+			int result = ufs->filler(ufs->buf, entry, NULL, 0);
+			g_free(entry);
+			return (result);
+		} else {
+			/*
+			 * skip this invalid entry but keep adding other entries
+			 */
+			return (1);
+		}
 	} else {
 		return (ufs->filler(ufs->buf, tag_or_namespace, NULL, 0));
 	}
@@ -746,19 +754,19 @@ int tagsistant_readdir_on_export(
 		filler(buf, "..", NULL, 0);
 
 		tagsistant_query(
-			"select tagname, key, value from tags",
-			qtree->dbi, tagsistant_add_tag_to_export, ufs);
+			"select tagname, `key`, `value` from tags where (`tagname` not like \"\%%s\") or (`value` <> \"\")",
+			qtree->dbi, tagsistant_add_tag_to_export, ufs, tagsistant.namespace_suffix);
 	} else {
 		filler(buf, ".", NULL, 0);
 		filler(buf, "..", NULL, 0);
 
 		/*
-		 * list all the objects linked by a tag
+		 * list all the objects linked by a tag with their inode prepended
 		 */
 		qtree->force_inode_in_filenames = 1;
 
 		GError *error = NULL;
-		GRegex *rx = g_regex_new("([^:]+):([^=]+)=(.*)", G_REGEX_EXTENDED, 0, &error);
+		GRegex *rx = g_regex_new("([^:]+:)([^=]+)=(.*)", G_REGEX_EXTENDED, 0, &error);
 
 		if ((error is NULL) && (rx)) {
 			GMatchInfo *match_info;
@@ -770,18 +778,18 @@ int tagsistant_readdir_on_export(
 				gchar *value = g_match_info_fetch(match_info, 3);
 
 				tagsistant_query(
-					"select objectname, cast(inode as string) from objects "
-						"join tagging on tagging.inode = object.inode "
+					"select objectname, cast(objects.inode as char) from objects "
+						"join tagging on tagging.inode = objects.inode "
 						"join tags on tags.tag_id = tagging.tag_id "
 						"where tagname = \"%s\" and `key` = \"%s\" and value = \"%s\"",
-					qtree->dbi, tagsistant_add_entry_to_dir, ufs, qtree->namespace, qtree->key, qtree->value);
+					qtree->dbi, tagsistant_add_entry_to_dir, ufs, namespace, key, value);
 
 				g_free(namespace);
 				g_free(key);
 				g_free(value);
 			} else {
 				tagsistant_query(
-					"select objectname, cast(objects.inode as string) from objects "
+					"select objectname, cast(objects.inode as char) from objects "
 						"join tagging on tagging.inode = objects.inode "
 						"join tags on tags.tag_id = tagging.tag_id "
 						"where tagname = \"%s\"",

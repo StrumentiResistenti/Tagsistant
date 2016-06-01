@@ -57,8 +57,9 @@ int tagsistant_readlink(const char *path, char *buf, size_t size)
 			 * then enter archive, the whole stack of reversed inode and
 			 * finally put the filename here
 			 */
-			gchar *tmp = g_strdup_printf("../../archive/%s", qtree->archive_path);
-			res = strlen(tmp);
+			tagsistant_querytree_rebuild_paths(qtree);
+			gchar *tmp = g_strdup_printf("../../archive%s", qtree->archive_path);
+			res = strlen(tmp) + 1;
 			memcpy(buf, tmp, res);
 			g_free(tmp);
 		}
