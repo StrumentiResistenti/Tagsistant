@@ -606,6 +606,12 @@ int main(int argc, char *argv[])
 	}
 	chmod(tagsistant.archive, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
 
+	tagsistant.link = g_strdup_printf("%s/link", tagsistant.repository);
+	if (symlink("repository.ini", tagsistant.link) isNot 0 && errno isNot EEXIST) {
+		dbg('b', LOG_ERR, "Error creating internal link to repository.ini: %s", strerror(errno));
+		exit(1);
+	}
+
 	dbg('b', LOG_INFO, "Debug is enabled: %s", tagsistant.debug ? "yes" : "no");
 
 	umask(0);

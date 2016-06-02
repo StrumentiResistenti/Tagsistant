@@ -1,3 +1,20 @@
+0.8.2:
+  - RDS implementation: queries listing is saved in a dedicated in-memory
+    structure called RDS, for Reusable Data Set. The first call to use a
+    path (usually a readdir(), but that's not an absolute rule) fill fill
+    the RDS and store it in a cache. Subsequent calls on the same path
+    will reuse the cached version, until a modifying query (mknod, symlink
+    and so on) will invalidate the cache. This results in a sensible speed
+    up of query resolution and result listing.
+
+  - export/ directory: as requested by many, Tagsistant content can be
+    exported using the export/ directory. It contains a subdir for each
+    tag, filled of symlinks pointing to the respective object inside the
+    archive/ directory. So basically, making a full backup of the archive/
+    and export/ directories is enough to have a complete off-line readable
+    backup of a repository. Triple tags are combined using the pattern
+    "namespace:key=value".
+
 0.8.1:
   - Implemented the 'required' relation. If a tag M is required by S
     then the S tag is shown only if the M tag has been already included

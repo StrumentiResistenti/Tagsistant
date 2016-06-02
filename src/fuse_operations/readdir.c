@@ -858,7 +858,7 @@ int tagsistant_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_
 	} else if (QTREE_IS_RELATIONS(qtree)) {
 		res = tagsistant_readdir_on_relations(qtree, path, buf, filler, &tagsistant_errno);
 
-	} else if (QTREE_IS_STATS(qtree) || QTREE_IS_RETAG(qtree)) {
+	} else if (QTREE_IS_STATS(qtree)) {
 		res = tagsistant_readdir_on_stats(qtree, path, buf, filler, &tagsistant_errno);
 
 	} else if (QTREE_IS_ALIAS(qtree)) {

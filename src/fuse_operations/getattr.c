@@ -195,7 +195,7 @@ int tagsistant_getattr(const char *path, struct stat *stbuf)
 		if (!qtree->inode) {
 			lstat_path = tagsistant.archive;
 		} else {
-			lstat_path = qtree->full_archive_path;
+			lstat_path = tagsistant.link;
 		}
 	}
 
@@ -330,12 +330,13 @@ int tagsistant_getattr(const char *path, struct stat *stbuf)
 
 	} else if (QTREE_IS_ARCHIVE(qtree)) {
 
-		stbuf->st_mode |= _PERMISSIONS;
+		if (!qtree->inode) stbuf->st_mode |= _PERMISSIONS;
 
 	} else if (QTREE_IS_EXPORT(qtree)) {
 
-		if (lstat_path is qtree->full_archive_path) {
+		if (lstat_path is tagsistant.link) {
 			stbuf->st_mode = S_IFLNK|_RELAXED_PERMISSIONS;
+			stbuf->st_size = 13 /* strlen("../../archive") */ + strlen(qtree->archive_path);
 		}
 
 	}
@@ -347,7 +348,7 @@ TAGSISTANT_EXIT_OPERATION:
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("GETATTR on %s (%s): OK", path, tagsistant_querytree_type(qtree));
+		TAGSISTANT_STOP_OK("GETATTR on %s (%s): OK", qtree->full_path, tagsistant_querytree_type(qtree));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return (0);
 	}

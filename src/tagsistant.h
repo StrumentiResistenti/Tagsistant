@@ -240,6 +240,7 @@ struct tagsistant {
 	gchar		*archive;		/**< a directory holding all the files */
 	gchar		*tags;			/**< a SQLite database on file */
 	gchar		*dboptions;		/**< database options for DBI */
+	gchar		*link;			/**< a symlink used in getattr() for export/ */
 
 #if TAGSISTANT_REENTRANT_DBI
 	dbi_inst	dbi_instance;	/**< libDBI instance for reentrant functions */

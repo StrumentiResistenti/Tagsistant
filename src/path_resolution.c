@@ -1209,7 +1209,7 @@ int tagsistant_querytree_parse_export(
 		/*
 		 * two tokens  with inode (this is export/tag/1234___object) -> set the object inode
 		 */
-		qtree->object_path = __NEXT_TOKEN; // g_strjoinv(G_DIR_SEPARATOR_S, *token_ptr);
+		qtree->object_path = g_strdup(__NEXT_TOKEN); // g_strjoinv(G_DIR_SEPARATOR_S, *token_ptr);
 		qtree->inode = tagsistant_inode_extract_from_path(qtree->object_path);
 
 		if (qtree->inode) {
@@ -1752,12 +1752,24 @@ tagsistant_querytree *tagsistant_querytree_new(
 	dbg('q', LOG_INFO, "Building querytree for %s", qtree->full_path);
 
 	/*
-	 * split the path
+	 * split the path for parsing
 	 */
 	gchar **splitted = g_strsplit(qtree->expanded_full_path, "/", 512); /* split up to 512 tokens */
-	gchar __TOKEN = splitted + 1; /* first element is always "" since path begins with '/' */
+	if (splitted is NULL) {
+		dbg('q', LOG_ERR, "Error parsing query path on %s", path);
+		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
+		return (NULL);
+	}
 
-	/* guess the type of the query by first token */
+	/*
+	 * parse the path, skipping the first token which is
+	 * always "" since the path starts by '/'
+	 */
+	gchar __TOKEN = splitted + 1;
+
+	/*
+	 * guess the type of the query
+	 */
 	if (__TOKEN is '\0')								qtree->type = QTYPE_ROOT;
 	else if (g_strcmp0(*token_ptr, "store") is 0)		qtree->type = QTYPE_STORE;
 	else if (g_strcmp0(*token_ptr, "relations") is 0)	qtree->type = QTYPE_RELATIONS;
@@ -1977,6 +1989,7 @@ void tagsistant_path_resolution_init()
 	tagsistant_querytree_types[QTYPE_STATS]		= g_strdup("QTYPE_STATS");
 	tagsistant_querytree_types[QTYPE_STORE]		= g_strdup("QTYPE_STORE");
 	tagsistant_querytree_types[QTYPE_ALIAS]		= g_strdup("QTYPE_ALIAS");
+	tagsistant_querytree_types[QTYPE_EXPORT]	= g_strdup("QTYPE_EXPORT");
 
 #if TAGSISTANT_ENABLE_QUERYTREE_CACHE
 	/* initialize the tagsistant_querytree object cache */

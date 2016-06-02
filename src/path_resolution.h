@@ -102,7 +102,6 @@ typedef enum {
 	QTYPE_ROOT,			// no path, that's a special case for root directory
 	QTYPE_ARCHIVE,		// path pointing to objects on disk, begins with /archive/
 	QTYPE_TAGS,			// path that's a query, begins with /tags/
-	QTYPE_RETAG,		// experimental path used for object retagging
 	QTYPE_RELATIONS,	// path that's a relation between two or more tags, begins with /relations/
 	QTYPE_STATS,		// path that's a special query for internal status, begins with /stats/
 	QTYPE_STORE,		// where the files are tagged and accessed
@@ -132,7 +131,6 @@ extern gchar *tagsistant_querytree_types[QTYPE_TOTAL];
 #define QTREE_IS_ARCHIVE(qtree)		(qtree->type is QTYPE_ARCHIVE)
 #define QTREE_IS_RELATIONS(qtree)	(qtree->type is QTYPE_RELATIONS)
 #define QTREE_IS_STATS(qtree)		(qtree->type is QTYPE_STATS)
-#define QTREE_IS_RETAG(qtree)		(qtree->type is QTYPE_RETAG)
 #define QTREE_IS_STORE(qtree)		(qtree->type is QTYPE_STORE)
 #define QTREE_IS_ALIAS(qtree)		(qtree->type is QTYPE_ALIAS)
 #define QTREE_IS_EXPORT(qtree)		(qtree->type is QTYPE_EXPORT)
@@ -393,6 +391,7 @@ extern void 					tagsistant_querytree_destroy(tagsistant_querytree *qtree, guint
 
 extern void						tagsistant_querytree_set_object_path(tagsistant_querytree *qtree, char *new_object_path);
 extern void						tagsistant_querytree_set_inode(tagsistant_querytree *qtree, tagsistant_inode inode);
+extern void						tagsistant_querytree_rebuild_paths(tagsistant_querytree *qtree);
 extern tagsistant_query_type	tagsistant_querytree_guess_type(gchar **token_ptr);
 extern int						tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree);
 
