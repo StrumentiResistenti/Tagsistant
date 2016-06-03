@@ -308,7 +308,7 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	 */
 	if (rds->is_all_path) {
 		tagsistant_query(
-			"select objectname, inode from objects",
+			"select inode, objectname from objects",
 			qtree->dbi,
 			(tagsistant_query_callback) tagsistant_rds_materialize_entry,
 			rds);
