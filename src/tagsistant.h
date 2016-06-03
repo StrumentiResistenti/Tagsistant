@@ -115,6 +115,8 @@
 #define isNot !=
 #define eq ==
 
+#define unless(cond) if (!(cond))
+
 #include "config.h"
 
 #ifndef VERSION

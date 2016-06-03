@@ -76,9 +76,6 @@ typedef struct qtree_and_node {
 	/** list of all related tags **/
 	struct qtree_and_node *related;
 
-	/** list of all negated tags **/
-	struct qtree_and_node *negated;
-
 	/** next AND token */
 	struct qtree_and_node *next;
 } qtree_and_node;
@@ -90,8 +87,14 @@ typedef struct qtree_or_node {
 	/** the next OR section */
 	struct qtree_or_node *next;
 
+	/** true if this OR node contains the ALL tag */
+	gboolean is_all_node;
+
 	/** the list of AND tokens */
 	struct qtree_and_node *and_set;
+
+	/** the list of AND tokens to be subtracted */
+	struct qtree_and_node *negated_and_set;
 } qtree_or_node;
 
 /*
@@ -316,6 +319,7 @@ typedef struct {
  * reasoning structure to trace reasoning process
  */
 typedef struct {
+	qtree_or_node *or_node;
 	qtree_and_node *start_node;
 	qtree_and_node *current_node;
 	int added_tags;
@@ -441,4 +445,4 @@ extern qtree_or_node *			tagsistant_duplicate_tree(qtree_or_node *orig);
 	"Internal error: can't allocate enough memory\n"
 
 #define TAGSISTANT_ERROR_NEGATION_ON_FIRST_POSITION \
-	"Syntax error: negation can't start a query or follow a +/ operator"
+	"Syntax error: negation can't start a query or follow a +/ operator\n"

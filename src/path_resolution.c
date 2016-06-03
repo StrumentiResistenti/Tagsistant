@@ -187,8 +187,9 @@ tagsistant_inode tagsistant_inode_extract_from_path(const gchar *path)
 }
 
 /**
- * Try to guess the inode of an object by comparing DB contents
- * with and and-set of tags
+ * Try to guess if an object exists in the results of a query.
+ * If it does, its inode is set and the querytree field named
+ * exists is set to 1.
  *
  * @param and_set a pointer to a qtree_and_node and-set data structure
  * @param dbi a libDBI dbi_conn reference
@@ -196,15 +197,21 @@ tagsistant_inode tagsistant_inode_extract_from_path(const gchar *path)
  * @return the inode of the object if found, zero otherwise
  */
 tagsistant_inode
-tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, dbi_conn dbi, gchar *objectname)
+tagsistant_guess_inode_from_and_set(
+	qtree_and_node *and_set,
+	qtree_and_node *negated_and_set,
+	dbi_conn dbi,
+	gchar *objectname,
+	gboolean is_all_path)
 {
 	tagsistant_inode inode = 0, guessed_inode = 0;
 
 	/*
 	 * if called without an and_set (which can happen on syntactically
-	 * wrong queries) just return
+	 * wrong queries) just return -- the and_set can also be NULL if
+	 * this is an ALL/ path, but in this case just keep going
 	 */
-	if (!and_set) return (0);
+	if (!and_set && !is_all_path) return (0);
 
 #if TAGSISTANT_ENABLE_AND_SET_CACHE
 	/* check if the query has been already answered and cached */
@@ -222,6 +229,24 @@ tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, dbi_conn dbi, gchar
 #endif
 
 	/*
+	 * handle the ALL/ special case by guessing the inode of the first
+	 * object named objectname
+	 */
+	if (is_all_path) {
+		// get the inode from the object path
+		inode = tagsistant_inode_extract_from_path(objectname);
+
+		// load the inode from the object table
+		if (!inode) {
+			tagsistant_query(
+				"select inode from objects where objectname = \"%s\"",
+				dbi, tagsistant_return_integer, &inode, objectname);
+		}
+
+		goto BREAK_LOOKUP;
+	}
+
+	/*
 	 * the first step is to check every tag in the and_set linked by
 	 * the ->next field. if the object is tagged by each tag, the first
 	 * step is fulfilled
@@ -229,24 +254,6 @@ tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, dbi_conn dbi, gchar
 	qtree_and_node *and_set_ptr = and_set;
 
 	while (and_set_ptr) {
-		/*
-		 * handle the ALL/ special case by guessing the inode of the first
-		 * object named objectname
-		 */
-		if (g_strcmp0(and_set_ptr->tag, "ALL") is 0) {
-			// get the inode from the object path
-			inode = tagsistant_inode_extract_from_path(objectname);
-
-			// load the inode from the object table
-			if (!inode) {
-				tagsistant_query(
-					"select inode from objects where objectname = \"%s\"",
-					dbi, tagsistant_return_integer, &inode, objectname);
-			}
-
-			goto BREAK_LOOKUP;
-		}
-
 		/*
 		 * the query is not an ALL/ query, so we process each tag.
 		 * if no match is directly found, we check the ->related tags too.
@@ -298,7 +305,7 @@ tagsistant_guess_inode_from_and_set(qtree_and_node *and_set, dbi_conn dbi, gchar
 	/*
 	 * the second step involves negated tags
 	 */
-	and_set_ptr = and_set->negated;
+	and_set_ptr = negated_and_set;
 	while (and_set_ptr) {
 		tagsistant_inode single_and_inode = tagsistant_check_single_tagging(and_set_ptr, dbi, objectname);
 
@@ -367,7 +374,7 @@ int tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree)
 		return (0);
 
 	if (strlen(qtree->object_path) is 0) {
-		qtree->exists = 1;
+		qtree->exists = 1; // for complete queries without and object path
 		return (1);
 	}
 
@@ -645,6 +652,10 @@ int tagsistant_querytree_parse_store (
 
 			tag_group = TAGSISTANT_TAG_GROUP_DONT_ADD;
 
+		} else if (strcmp(__TOKEN, "ALL") is 0) {
+
+			last_or->is_all_node = TRUE;
+
 		} else {
 			/* save next token in new qtree_and_node_t slot */
 			qtree_and_node *and = g_new0(qtree_and_node, 1);
@@ -709,7 +720,6 @@ int tagsistant_querytree_parse_store (
 
 			and->next = NULL;
 			and->related = NULL;
-			and->negated = NULL;
 
 			/*
 			 * Append this node to the tree:
@@ -722,15 +732,17 @@ int tagsistant_querytree_parse_store (
 				qtree->negate_next_tag = 0;
 				and->negate = 1;
 
-				/* append this node to the last qtree_and_node as a negated node */
-				qtree_and_node *last_negated = last_and;
-				if (!last_and)
+				/*
+				 * negation can't start a query, the ALL/ tag or a valid tag should precede it
+				 */
+				unless (last_and || last_or->is_all_node)
 					TAGSISTANT_ABORT_STORE_PARSING(TAGSISTANT_ERROR_NEGATION_ON_FIRST_POSITION);
 
-				while (last_negated->negated) {
-					last_negated = last_negated->negated;
-				}
-				last_negated->negated = and;
+				/*
+				 * prepend this node to the last qtree_and_node as a negated node
+				 */
+				and->next = last_or->negated_and_set;
+				last_or->negated_and_set = and;
 			} else if (TAGSISTANT_TAG_GROUP_ADD_TO_NODE is tag_group) {
 				/* append this node to the last related node of the last qtree_and_node */
 				qtree_and_node *last_related = last_and;
@@ -758,12 +770,15 @@ int tagsistant_querytree_parse_store (
 				tag_group = TAGSISTANT_TAG_GROUP_ADD_TO_NODE;
 			}
 
-			/* search related tags */
+			/*
+			 * search related tags
+			 */
 			if (qtree->do_reasoning && (and->tag || (and->namespace && and->key && and->value))) {
 				dbg('q', LOG_INFO, "Searching for other tags related to %s", and->tag);
 
 				tagsistant_reasoning *reasoning = g_malloc(sizeof(tagsistant_reasoning));
 				if (reasoning isNot NULL) {
+					reasoning->or_node = last_or;
 					reasoning->start_node = and;
 					reasoning->current_node = and;
 					reasoning->added_tags = 0;
@@ -787,7 +802,7 @@ int tagsistant_querytree_parse_store (
 	 * move the pointer one element forward
 	 */
 	if (__TOKEN && (*__TOKEN is TAGSISTANT_QUERY_DELIMITER_CHAR)) {
-		if (!qtree->tree || !qtree->tree->and_set) {
+		if (!qtree->tree || !(qtree->tree->and_set || qtree->tree->is_all_node)) {
 			qtree->error_message = g_strdup(TAGSISTANT_ERROR_NULL_QUERY);
 		}
 		__SLIDE_TOKEN;
@@ -813,11 +828,14 @@ int tagsistant_querytree_parse_store (
 		 * a matching or_node->and_set->tag named tag is listed
 		 */
 		if (!qtree->inode) {
+			tagsistant_querytree_check_tagging_consistency(qtree);
+			/*
 			qtree_or_node *or_tmp = qtree->tree;
 			while (or_tmp && !qtree->inode && strlen(qtree->object_path)) {
-				qtree->inode = tagsistant_guess_inode_from_and_set(or_tmp->and_set, qtree->dbi, **token_ptr);
+				qtree->inode = tagsistant_guess_inode_from_and_set(or_tmp->and_set, qtree->dbi, **token_ptr, or_tmp->is_all_node);
 				or_tmp = or_tmp->next;
 			}
+			*/
 		} else {
 			/*
 			 * replace the inode and the separator with a blank string,
@@ -894,8 +912,10 @@ int tagsistant_querytree_parse_store (
 		/*
 		 * if an inode has been found, form the archive_path and full_archive_path
 		 */
-		if (qtree->inode)
-			tagsistant_querytree_set_inode(qtree, qtree->inode);
+		if (qtree->inode) {
+			tagsistant_querytree_rebuild_paths(qtree);
+			// tagsistant_querytree_set_inode(qtree, qtree->inode);
+		}
 
 		if (strlen(qtree->object_path))
 			qtree->points_to_object = qtree->valid = qtree->complete = 1;
@@ -1351,7 +1371,6 @@ qtree_and_node *tagsistant_querytree_duplicate_qtree_and_node(qtree_and_node *or
 	copy->value 		= g_strdup(origin->value);
 
 	copy->related 		= tagsistant_querytree_duplicate_qtree_and_node(origin->related);
-	copy->negated		= tagsistant_querytree_duplicate_qtree_and_node(origin->negated);
 	copy->next			= tagsistant_querytree_duplicate_qtree_and_node(origin->next);
 
 	return (copy);
@@ -1370,8 +1389,11 @@ qtree_or_node *tagsistant_querytree_duplicate_qtree_or_node(qtree_or_node *origi
 	qtree_or_node *copy = g_new0(qtree_or_node, 1);
 	if (!copy) return (NULL);
 
+	copy->is_all_node = origin->is_all_node;
+
 	copy->next = tagsistant_querytree_duplicate_qtree_or_node(origin->next);
 	copy->and_set = tagsistant_querytree_duplicate_qtree_and_node(origin->and_set);
+	copy->negated_and_set = tagsistant_querytree_duplicate_qtree_and_node(origin->negated_and_set);
 
 	return (copy);
 }
@@ -1634,7 +1656,6 @@ qtree_and_node *tagsistant_duplicate_and_set(qtree_and_node *orig)
 	node->key = g_strdup(orig->key);
 	node->namespace = g_strdup(orig->namespace);
 	node->negate = orig->negate;
-	node->negated = tagsistant_duplicate_and_set(orig->negated);
 	node->next = tagsistant_duplicate_and_set(orig->next);
 	node->operator = orig->operator;
 	node->related = tagsistant_duplicate_and_set(orig->related);

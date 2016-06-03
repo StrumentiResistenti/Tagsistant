@@ -162,6 +162,7 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"                               p: plugin\n"
 		"                               q: query parsing\n"
 		"                               r: reasoning\n"
+		"                               R: RDS\n"
 		"                               s: SQL queries\n"
 		"                               2: deduplication\n"
 		"\n%s"
@@ -518,7 +519,7 @@ int main(int argc, char *argv[])
 		" Tagsistant (tagfs) v.%s (codename: %s)\n"
 		" Build: %s FUSE_USE_VERSION: %d\n"
 		" (c) 2006-2014 Tx0 <tx0@strumentiresistenti.org>\n"
-		" For license informations, see %s -h\n\n"
+		" For license information, see %s -h\n\n"
 		, PACKAGE_VERSION, TAGSISTANT_CODENAME, TAGSISTANT_BUILDNUMBER
 		, FUSE_USE_VERSION, tagsistant.progname
 	);
