@@ -142,6 +142,7 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"    -v                       verbose syslogging\n"
 		"    -f                       run in foreground\n"
 		"    -s                       run single threaded\n"
+		"    --enable-trash, -t       enable %s trash tag\n"
 		"    --no-autotagging, -a     disable autotagging\n"
 		"    --open-permission, -P    relax metadirectories permissions to 0777 \n"
 		"    --multi-symlink, -m      create multiple symlink with the same name if\n"
@@ -167,7 +168,7 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"                               2: deduplication\n"
 		"\n%s"
 		, PACKAGE_VERSION, TAGSISTANT_CODENAME, TAGSISTANT_BUILDNUMBER
-		, FUSE_USE_VERSION, license, progname, progname, endnote
+		, FUSE_USE_VERSION, license, progname, progname, TAGSISTANT_TRASH_TAG, endnote
 	);
 }
 
@@ -226,6 +227,7 @@ static GOptionEntry tagsistant_options[] =
   { "repository", 0, 0,			G_OPTION_ARG_FILENAME,			&tagsistant.repository, 		"Repository path", "<repository path>" },
   { "foreground", 'f', 0, 		G_OPTION_ARG_NONE, 				&tagsistant.foreground, 		"Run in foreground", NULL },
   { "single-thread", 's', 0,	G_OPTION_ARG_NONE,				&tagsistant.singlethread, 		"Don't spawn other threads", NULL },
+  { "enable-trash", 't', 0,		G_OPTION_ARG_NONE,				&tagsistant.trash,		 		"Enable " TAGSISTANT_TRASH_TAG " at boot", NULL },
   { "db", 0, 0,					G_OPTION_ARG_STRING,			&tagsistant.dboptions, 			"Database connection options", "backend:[host:[db:[user:[password]]]]" },
   { "tags-suffix", 0, 0, 		G_OPTION_ARG_STRING, 			&tagsistant.tags_suffix, 		"The filenames suffix used to list their tags (default .tags)", TAGSISTANT_DEFAULT_TAGS_SUFFIX },
   { "readonly", 'r', 0, 		G_OPTION_ARG_NONE,				&tagsistant.readonly, 			"Mount read-only", NULL },

@@ -107,6 +107,9 @@
 /** the number of RDS (reusable data sets) allowed in the rds table before the GC kicks in */
 #define TAGSISTANT_GC_RDS 50000
 
+/** the name of the trash tag */
+#define TAGSISTANT_TRASH_TAG ".Trash"
+
 /**
  * Some replacements to standard C construct to avoid common pitfalls
  * and make the source more readable
@@ -231,6 +234,7 @@ struct tagsistant {
 	gboolean	open_permission;/**< use relaxed permissions (777) on tags and other meta-directories */
 	gboolean	enable_xattr;	/**< enable extended attributes (needed for POSIX ACL) */
 	gboolean	multi_symlink;	/**< allow multiple symlinks with the same name but different targets */
+	gboolean	trash;			/**< enable .Trash tag or not */
 
 	gchar		*tags_suffix;	/**< the suffix to be added to filenames to list their tags */
 	gchar		*namespace_suffix; /**< the suffix that distinguishes namespaces */
@@ -382,6 +386,8 @@ extern int tagsistant_querytree_find_duplicates(tagsistant_querytree *qtree, gch
 #endif
 
 extern gchar *tagsistant_get_file_tags(tagsistant_querytree *qtree);
+
+extern gboolean tagsistant_dispose_object_if_untagged(tagsistant_querytree *qtree);
 
 /**
  * RDS are Reusable Data Sets. Each RDS is build from a querytree.

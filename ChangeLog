@@ -1,4 +1,11 @@
 0.8.2:
+  - .Trash/ tag implementation: a special tag called ".Trash" (customizable
+    by the TAGSISTANT_TRASH_TAG define in tagsistant.h) is automatically
+	added to every object deleted by its last tag. When an object is later
+	deleted from the .Trash tag too, Tagsistant disposes it once for all.
+	This feature must be enabled at mount with the '-t' or '--enable-trash'
+	command line option.
+
   - RDS implementation: queries listing is saved in a dedicated in-memory
     structure called RDS, for Reusable Data Set. The first call to use a
     path (usually a readdir(), but that's not an absolute rule) fill fill

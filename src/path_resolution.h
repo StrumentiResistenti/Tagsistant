@@ -402,6 +402,17 @@ extern int						tagsistant_querytree_check_tagging_consistency(tagsistant_queryt
 extern int						tagsistant_querytree_deduplicate(tagsistant_querytree *qtree);
 extern int						tagsistant_querytree_cache_total();
 
+extern gboolean 				tagsistant_querytree_includes_tag(tagsistant_querytree *qtree,
+									const gchar *tag,
+									const gchar *namespace,
+									const gchar *key,
+									const gchar *value);
+extern gboolean 				tagsistant_querytree_negates_tag(tagsistant_querytree *qtree,
+									const gchar *tag,
+									const gchar *namespace,
+									const gchar *key,
+									const gchar *value);
+
 // caching functions
 extern void						tagsistant_invalidate_querytree_cache(tagsistant_querytree *qtree);
 extern void						tagsistant_invalidate_and_set_cache_entries(tagsistant_querytree *qtree);

@@ -1996,6 +1996,61 @@ extern void tagsistant_querytree_traverse(
     return;
 }
 
+gboolean tagsistant_querytree_has_tag(
+	tagsistant_querytree *qtree,
+	const gchar *tag,
+	const gchar *namespace,
+	const gchar *key,
+	const gchar *value,
+	gboolean use_negated)
+{
+	qtree_or_node *ptx = qtree->tree;
+	while (ptx isNot NULL) {
+		qtree_and_node *andptx = (use_negated) ? ptx->negated_and_set : ptx->and_set;
+		while (andptx isNot NULL) {
+			/*
+			 * if a single tag or a triple tag matches the tag requested
+			 * return TRUE
+			 */
+			if (tag && g_strcmp0(tag, andptx->tag) is 0) return (TRUE);
+
+			if (namespace && key && value &&
+				g_strcmp0(namespace, andptx->namespace) is 0 &&
+				g_strcmp0(key, andptx->key) is 0 &&
+				g_strcmp0(value, andptx->value) is 0
+			) return (TRUE);
+
+			andptx = andptx->next;
+		}
+		ptx = ptx->next;
+	}
+
+	/*
+	 * no tag matched so return false
+	 */
+	return (FALSE);
+}
+
+gboolean tagsistant_querytree_includes_tag(
+	tagsistant_querytree *qtree,
+	const gchar *tag,
+	const gchar *namespace,
+	const gchar *key,
+	const gchar *value)
+{
+	return (tagsistant_querytree_has_tag(qtree, tag, namespace, key, value, FALSE));
+}
+
+gboolean tagsistant_querytree_negates_tag(
+	tagsistant_querytree *qtree,
+	const gchar *tag,
+	const gchar *namespace,
+	const gchar *key,
+	const gchar *value)
+{
+	return (tagsistant_querytree_has_tag(qtree, tag, namespace, key, value, TRUE));
+}
+
 /**
  * Initialize path_resolution.c module
  */
