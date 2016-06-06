@@ -496,8 +496,6 @@ gchar *tagsistant_get_file_tags(tagsistant_querytree *qtree)
  */
 gboolean tagsistant_dispose_object_if_untagged(tagsistant_querytree *qtree)
 {
-	int dispose_object = 1;
-
 	if (!tagsistant_object_is_tagged(qtree->dbi, qtree->inode)) {
 		/*
 		 * if trash is enabled, move the object there
