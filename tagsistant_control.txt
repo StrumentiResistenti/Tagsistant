@@ -1,0 +1,19 @@
+libglib2.0,libdbi1,libdbd-mysql,libdbd-sqlite3,libextractor,libextractor-plugins,libfuse2
+
+
+--> 0 -  Maintainer: [ Tx0 <tx0@strumentiresistenti.org> ]
+    1 -  Summary: [ Semantic filesystem with tags, relations, autotagging and deduplication ]
+    2 -  Name:    [ tagsistant ]
+--> 3 -  Version: [ 0.8.1 ]
+    4 -  Release: [ 1 ]
+    5 -  License: [ GPL ]
+--> 6 -  Group:   [ filesystems ]
+    7 -  Architecture: [ amd64 ]
+    8 -  Source location: [ tagsistant-0.8 ]
+    9 -  Alternate source location: [  ]
+--> 10 - Requires: [ libglib2.0-0,libdbi1,libdbd-mysql,libdbd-sqlite3,libextractor-plugins,libfuse2,libextractor1c2a  ]
+--> 10 - Requires: [ libglib2.0-0,libdbi1,libdbd-mysql,libdbd-sqlite3,libfuse2,libextractor3  ]
+    11 - Provides: [ tagsistant ]
+    12 - Conflicts: [  ]
+    13 - Replaces: [  ]
+
