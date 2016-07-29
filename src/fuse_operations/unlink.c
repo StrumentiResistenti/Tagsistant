@@ -27,7 +27,8 @@
  */
 int tagsistant_unlink(const char *path)
 {
-    int res = 0, tagsistant_errno = 0, do_unlink = 1;
+    int res = 0, tagsistant_errno = 0;
+    gboolean dispose = TRUE;
 	gchar *unlink_path = NULL;
 
 	TAGSISTANT_START("UNLINK on %s", path);
@@ -66,12 +67,7 @@ int tagsistant_unlink(const char *path)
 				 * ...if still tagged, then avoid real unlink(): the object must survive!
 				 * ...otherwise we can delete it from the objects table
 				 */
-				if (!tagsistant_object_is_tagged(qtree->dbi, qtree->inode))
-					tagsistant_query(
-						"delete from objects where inode = %d",
-						qtree->dbi, NULL, NULL, qtree->inode);
-				else
-					do_unlink = 0;
+				dispose = tagsistant_dispose_object_if_untagged(qtree);
 			}
 
 #if TAGSISTANT_ENABLE_AND_SET_CACHE
@@ -82,12 +78,14 @@ int tagsistant_unlink(const char *path)
 #endif
 
 
-			// clean the RDS library
+			/*
+			 * clean the RDS library
+			 */
 			tagsistant_delete_rds_involved(qtree);
 		}
 
 		// unlink the object on disk
-		if (do_unlink) {
+		if (dispose) {
 			unlink_path = qtree->full_archive_path;
 			res = unlink(unlink_path);
 			tagsistant_errno = errno;

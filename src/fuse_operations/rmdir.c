@@ -39,7 +39,8 @@ void tagsistant_sql_delete_tag_proxy(
  */
 int tagsistant_rmdir(const char *path)
 {
-    int res = 0, tagsistant_errno = 0, do_rmdir = 1;
+    int res = 0, tagsistant_errno = 0;
+    gboolean dispose = TRUE;
 	gchar *rmdir_path = NULL;
 
 	TAGSISTANT_START("RMDIR on %s", path);
@@ -63,7 +64,7 @@ int tagsistant_rmdir(const char *path)
 		if (!QTREE_IS_COMPLETE(qtree)) {
 			// -- tags but incomplete (means: delete a tag) --
 			tagsistant_querytree_traverse(qtree, tagsistant_sql_delete_tag_proxy, 0);
-			do_rmdir = 0;
+			dispose = FALSE;
 		} else if (QTREE_IS_TAGGABLE(qtree)) {
 			/*
 			 * if object is pointed by a tags/ query, then untag it
@@ -83,17 +84,11 @@ int tagsistant_rmdir(const char *path)
 			 * ...if still tagged, then avoid real unlink(): the object must survive!
 			 * ...otherwise we can delete it from the objects table
 			 */
-			if (!tagsistant_object_is_tagged(qtree->dbi, qtree->inode)) {
-				tagsistant_query(
-					"delete from objects where inode = %d",
-					qtree->dbi, NULL, NULL, qtree->inode);
-			} else {
-				do_rmdir = 0;
-			}
+			dispose = tagsistant_dispose_object_if_untagged(qtree);
 		}
 
 		// do a real mkdir
-		if (do_rmdir) {
+		if (dispose) {
 			rmdir_path = qtree->full_archive_path;
 			res = rmdir(rmdir_path);
 			tagsistant_errno = errno;

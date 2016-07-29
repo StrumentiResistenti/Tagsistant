@@ -76,9 +76,6 @@ typedef struct qtree_and_node {
 	/** list of all related tags **/
 	struct qtree_and_node *related;
 
-	/** list of all negated tags **/
-	struct qtree_and_node *negated;
-
 	/** next AND token */
 	struct qtree_and_node *next;
 } qtree_and_node;
@@ -90,8 +87,14 @@ typedef struct qtree_or_node {
 	/** the next OR section */
 	struct qtree_or_node *next;
 
+	/** true if this OR node contains the ALL tag */
+	gboolean is_all_node;
+
 	/** the list of AND tokens */
 	struct qtree_and_node *and_set;
+
+	/** the list of AND tokens to be subtracted */
+	struct qtree_and_node *negated_and_set;
 } qtree_or_node;
 
 /*
@@ -102,11 +105,11 @@ typedef enum {
 	QTYPE_ROOT,			// no path, that's a special case for root directory
 	QTYPE_ARCHIVE,		// path pointing to objects on disk, begins with /archive/
 	QTYPE_TAGS,			// path that's a query, begins with /tags/
-	QTYPE_RETAG,		// experimental path used for object retagging
 	QTYPE_RELATIONS,	// path that's a relation between two or more tags, begins with /relations/
 	QTYPE_STATS,		// path that's a special query for internal status, begins with /stats/
 	QTYPE_STORE,		// where the files are tagged and accessed
 	QTYPE_ALIAS,		// where query aliases (bookmarks) are kept
+	QTYPE_EXPORT,		// an exportable view of tagged objects
 	QTYPE_TOTAL
 } tagsistant_query_type;
 
@@ -125,15 +128,15 @@ extern gchar *tagsistant_querytree_types[QTYPE_TOTAL];
  * to ease coding, there are some macros to check
  * if a query if of a given type
  */
-#define QTREE_IS_MALFORMED(qtree)	(QTYPE_MALFORMED is qtree->type)
-#define QTREE_IS_ROOT(qtree)		(QTYPE_ROOT is qtree->type)
-#define QTREE_IS_TAGS(qtree)		(QTYPE_TAGS is qtree->type)
-#define QTREE_IS_ARCHIVE(qtree)		(QTYPE_ARCHIVE is qtree->type)
-#define QTREE_IS_RELATIONS(qtree)	(QTYPE_RELATIONS is qtree->type)
-#define QTREE_IS_STATS(qtree)		(QTYPE_STATS is qtree->type)
-#define QTREE_IS_RETAG(qtree)		(QTYPE_RETAG is qtree->type)
-#define QTREE_IS_STORE(qtree)		(QTYPE_STORE is qtree->type)
-#define QTREE_IS_ALIAS(qtree)		(QTYPE_ALIAS is qtree->type)
+#define QTREE_IS_MALFORMED(qtree)	(qtree->type is QTYPE_MALFORMED)
+#define QTREE_IS_ROOT(qtree)		(qtree->type is QTYPE_ROOT)
+#define QTREE_IS_TAGS(qtree)		(qtree->type is QTYPE_TAGS)
+#define QTREE_IS_ARCHIVE(qtree)		(qtree->type is QTYPE_ARCHIVE)
+#define QTREE_IS_RELATIONS(qtree)	(qtree->type is QTYPE_RELATIONS)
+#define QTREE_IS_STATS(qtree)		(qtree->type is QTYPE_STATS)
+#define QTREE_IS_STORE(qtree)		(qtree->type is QTYPE_STORE)
+#define QTREE_IS_ALIAS(qtree)		(qtree->type is QTYPE_ALIAS)
+#define QTREE_IS_EXPORT(qtree)		(qtree->type is QTYPE_EXPORT)
 
 /*
  * if a query points to an object on disk this returns true;
@@ -316,6 +319,7 @@ typedef struct {
  * reasoning structure to trace reasoning process
  */
 typedef struct {
+	qtree_or_node *or_node;
 	qtree_and_node *start_node;
 	qtree_and_node *current_node;
 	int added_tags;
@@ -391,11 +395,23 @@ extern void 					tagsistant_querytree_destroy(tagsistant_querytree *qtree, guint
 
 extern void						tagsistant_querytree_set_object_path(tagsistant_querytree *qtree, char *new_object_path);
 extern void						tagsistant_querytree_set_inode(tagsistant_querytree *qtree, tagsistant_inode inode);
+extern void						tagsistant_querytree_rebuild_paths(tagsistant_querytree *qtree);
 extern tagsistant_query_type	tagsistant_querytree_guess_type(gchar **token_ptr);
 extern int						tagsistant_querytree_check_tagging_consistency(tagsistant_querytree *qtree);
 
 extern int						tagsistant_querytree_deduplicate(tagsistant_querytree *qtree);
 extern int						tagsistant_querytree_cache_total();
+
+extern gboolean 				tagsistant_querytree_includes_tag(tagsistant_querytree *qtree,
+									const gchar *tag,
+									const gchar *namespace,
+									const gchar *key,
+									const gchar *value);
+extern gboolean 				tagsistant_querytree_negates_tag(tagsistant_querytree *qtree,
+									const gchar *tag,
+									const gchar *namespace,
+									const gchar *key,
+									const gchar *value);
 
 // caching functions
 extern void						tagsistant_invalidate_querytree_cache(tagsistant_querytree *qtree);
@@ -440,4 +456,4 @@ extern qtree_or_node *			tagsistant_duplicate_tree(qtree_or_node *orig);
 	"Internal error: can't allocate enough memory\n"
 
 #define TAGSISTANT_ERROR_NEGATION_ON_FIRST_POSITION \
-	"Syntax error: negation can't start a query or follow a +/ operator"
+	"Syntax error: negation can't start a query or follow a +/ operator\n"

@@ -49,7 +49,7 @@ tagsistant_rds_materialize_entry(tagsistant_rds *rds, dbi_result result)
 	tagsistant_inode inode = dbi_result_get_uint_idx(result, 1);
 	gchar *name = dbi_result_get_string_copy_idx(result, 2);
 
-	dbg('f', LOG_INFO, "adding (%d,%s) to RDS %s", inode, name, rds->checksum);
+	dbg('R', LOG_INFO, "adding (%d,%s) to RDS %s", inode, name, rds->checksum);
 
 	/*
 	 * lookup the GList object. Since a filename can feature more
@@ -57,8 +57,8 @@ tagsistant_rds_materialize_entry(tagsistant_rds *rds, dbi_result result)
 	 * is a GList that holds different inodes
 	 */
 	GList *list = (GList *) (rds->entries ? g_hash_table_lookup(rds->entries, name) : NULL);
-	list = g_list_prepend(list, GINT_TO_POINTER(inode));
-	dbg('f', LOG_INFO, "Adding inode %d, list holds %d elements", inode, g_list_length(list));
+	list = g_list_prepend(list, GUINT_TO_POINTER(inode));
+	dbg('R', LOG_INFO, "Adding inode %d, list holds %d elements", inode, g_list_length(list));
 
 	/*
 	 * save the new start of the GList inside the hash table
@@ -96,10 +96,10 @@ tagsistant_rds_uniq_entries(gchar *object_name, GList *inode_list, tagsistant_rd
 	while (ptr) {
 		if (g_hash_table_contains(set, ptr->data)) {
 			inode_list = g_list_delete_link(inode_list, ptr);
-			// dbg('f', LOG_INFO, "Removing duplicate inode %d", GPOINTER_TO_INT(ptr->data));
+			// dbg('R', LOG_INFO, "Removing duplicate inode %d", GPOINTER_TO_UINT(ptr->data));
 		} else {
 			g_hash_table_add(set, ptr->data);
-			// dbg('f', LOG_INFO, "Confirming inode %d", GPOINTER_TO_INT(ptr->data));
+			// dbg('R', LOG_INFO, "Confirming inode %d", GPOINTER_TO_UINT(ptr->data));
 		}
 
 		ptr = ptr->next;
@@ -121,12 +121,12 @@ tagsistant_rds_uniq_entries(gchar *object_name, GList *inode_list, tagsistant_rd
 void tagsistant_query_add_and_set(GString *statement, qtree_and_node *and_set)
 {
 	if (!and_set) {
-		dbg('f', LOG_ERR, "tagsistant_query_add_and_set() called with NULL and_set");
+		dbg('R', LOG_ERR, "tagsistant_query_add_and_set() called with NULL and_set");
 		return;
 	}
 
 	if (!statement) {
-		dbg('f', LOG_ERR, "tagsistant_query_add_and_set() called with NULL statement");
+		dbg('R', LOG_ERR, "tagsistant_query_add_and_set() called with NULL statement");
 		return;
 	}
 
@@ -298,7 +298,7 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 #endif
 
 	if (!rds->entries) {
-		dbg('f', LOG_ERR, "Error allocating RDS entries");
+		dbg('R', LOG_ERR, "Error allocating RDS entries");
 		return (FALSE);
 	}
 	g_hash_table_ref(rds->entries);
@@ -306,9 +306,10 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	/*
 	 * If the RDS is an ALL path, just load all the objects
 	 */
+#if 0
 	if (rds->is_all_path) {
 		tagsistant_query(
-			"select objectname, inode from objects",
+			"select inode, objectname from objects",
 			qtree->dbi,
 			(tagsistant_query_callback) tagsistant_rds_materialize_entry,
 			rds);
@@ -319,6 +320,7 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 		g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_rds_uniq_entries, rds);
 		return (TRUE);
 	}
+#endif
 
 	/*
 	 * PHASE 1.
@@ -329,25 +331,51 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	qtree_or_node *query = qtree->tree;
 
 	while (query) {
-		GString *create_base_table = g_string_sized_new(51200);
-		g_string_append_printf(create_base_table,
-			"create temporary table tv%.16" PRIxPTR " as "
-			"select objects.inode, objects.objectname from objects "
-				"join tagging on tagging.inode = objects.inode "
-				"join tags on tags.tag_id = tagging.tag_id "
-				"where ",
-			(uintptr_t) query);
+		qtree_and_node *next_and = query->and_set;
 
 		/*
-		 * add each qtree_and_node (main and ->related) to the query
+		 * skip OR nodes with no tags, including ALL/
 		 */
-		tagsistant_query_add_and_set(create_base_table, query->and_set);
+		unless (query->is_all_node || next_and) {
+			query = query->next;
+			continue;
+		}
 
-		qtree_and_node *related = query->and_set ? query->and_set->related : NULL;
-		while (related) {
-			g_string_append(create_base_table, " or ");
-			tagsistant_query_add_and_set(create_base_table, related);
-			related = related->related;
+		/*
+		 * create the base table with all the objects tagged with the first
+		 * tag (or all the object, if the OR node contains the ALL/ tag)
+		 */
+		GString *create_base_table = g_string_sized_new(51200);
+		if (query->is_all_node) {
+			g_string_printf(create_base_table,
+				"create temporary table tv%.16" PRIxPTR " as "
+				"select inode, objectname from objects",
+				(uintptr_t) query);
+		} else if (next_and) {
+			g_string_append_printf(create_base_table,
+				"create temporary table tv%.16" PRIxPTR " as "
+				"select objects.inode, objects.objectname from objects "
+					"join tagging on tagging.inode = objects.inode "
+					"join tags on tags.tag_id = tagging.tag_id "
+					"where ",
+				(uintptr_t) query);
+
+			/*
+			 * add each qtree_and_node (main and ->related) to the query
+			 */
+			tagsistant_query_add_and_set(create_base_table, next_and);
+
+			qtree_and_node *related = next_and ? next_and->related : NULL;
+			while (related) {
+				g_string_append(create_base_table, " or ");
+				tagsistant_query_add_and_set(create_base_table, related);
+				related = related->related;
+			}
+
+			/*
+			 * slide to next tag
+			 */
+			next_and = next_and->next;
 		}
 
 		/*
@@ -361,8 +389,7 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 		 * for each ->next linked node, subtract from the base table
 		 * the objects not matching this node
 		 */
-		qtree_and_node *next = query->and_set ? query->and_set->next : NULL;
-		while (next) {
+		while (next_and) {
 			GString *cross_tag = g_string_sized_new(51200);
 			g_string_append_printf(cross_tag,
 				"delete from tv%.16" PRIxPTR " where inode not in ("
@@ -375,9 +402,9 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 			/*
 			 * add each qtree_and_node (main and ->related) to the query
 			 */
-			tagsistant_query_add_and_set(cross_tag, next);
+			tagsistant_query_add_and_set(cross_tag, next_and);
 
-			qtree_and_node *related = next->related;
+			qtree_and_node *related = next_and->related;
 			while (related) {
 				g_string_append(cross_tag, " or ");
 				tagsistant_query_add_and_set(cross_tag, related);
@@ -395,7 +422,7 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 			tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
 			g_string_free(cross_tag, TRUE);
 
-			next = next->next;
+			next_and = next_and->next;
 		}
 
 		/*
@@ -403,46 +430,41 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 		 * for each ->negated linked node, subtract from the base table
 		 * the objects that do match this node
 		 */
-		next = query->and_set;
-		while (next) {
-			qtree_and_node *negated = next->negated;
-			while (negated) {
-				GString *cross_tag = g_string_sized_new(51200);
-				g_string_append_printf(cross_tag,
-					"delete from tv%.16" PRIxPTR " where inode in ("
-					"select objects.inode from objects "
-						"join tagging on tagging.inode = objects.inode "
-						"join tags on tags.tag_id = tagging.tag_id "
-						"where ",
-					(uintptr_t) query);
+		qtree_and_node *next_negated = query->negated_and_set;
+		while (next_negated) {
+			GString *cross_tag = g_string_sized_new(51200);
+			g_string_append_printf(cross_tag,
+				"delete from tv%.16" PRIxPTR " where inode in ("
+				"select objects.inode from objects "
+					"join tagging on tagging.inode = objects.inode "
+					"join tags on tags.tag_id = tagging.tag_id "
+					"where ",
+				(uintptr_t) query);
 
-				/*
-				 * add each qtree_and_node (main and ->related) to the query
-				 */
-				tagsistant_query_add_and_set(cross_tag, negated);
+			/*
+			 * add each qtree_and_node (main and ->related) to the query
+			 */
+			tagsistant_query_add_and_set(cross_tag, next_negated);
 
-				qtree_and_node *related = negated->related;
-				while (related) {
-					g_string_append(cross_tag, " or ");
-					tagsistant_query_add_and_set(cross_tag, related);
-					related = related->related;
-				}
-
-				/*
-				 * close the subquery
-				 */
-				g_string_append(cross_tag, ")");
-
-				/*
-				 * apply the query and dispose the statement GString
-				 */
-				tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
-				g_string_free(cross_tag, TRUE);
-
-				negated = negated->negated;
+			qtree_and_node *related = next_negated->related;
+			while (related) {
+				g_string_append(cross_tag, " or ");
+				tagsistant_query_add_and_set(cross_tag, related);
+				related = related->related;
 			}
 
-			next = next->next;
+			/*
+			 * close the subquery
+			 */
+			g_string_append(cross_tag, ")");
+
+			/*
+			 * apply the query and dispose the statement GString
+			 */
+			tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
+			g_string_free(cross_tag, TRUE);
+
+			next_negated = next_negated->next;
 		}
 
 		/*
@@ -517,7 +539,7 @@ tagsistant_rds_delete_oldest(tagsistant_querytree *qtree)
 {
 	int rds_id;
 	tagsistant_query("select min(id) from rds", qtree->dbi, tagsistant_return_integer, &rds_id);
-	dbg('f', LOG_INFO, "Garbage collector: deleting rds %d", rds_id);
+	dbg('R', LOG_INFO, "Garbage collector: deleting rds %d", rds_id);
 	tagsistant_query("delete from rds where id = %d", qtree->dbi, NULL, NULL, rds_id);
 }
 #endif
@@ -640,7 +662,7 @@ void tagsistant_rds_destroy(tagsistant_rds *rds)
 	if (!rds) return;
 
 	tagsistant_rds_write_lock(rds);
-	dbg('f', LOG_INFO, "Destroying RDS %s", rds->checksum);
+	dbg('R', LOG_INFO, "Destroying RDS %s", rds->checksum);
 
 	g_free(rds->checksum);
 	g_free(rds->path);
@@ -722,25 +744,23 @@ tagsistant_rds_new(tagsistant_querytree *qtree)
 	 * a NULL query can't be processed
 	 */
 	if (!qtree) {
-		dbg('f', LOG_ERR, "NULL tagsistant_querytree object provided to %s", __func__);
+		dbg('R', LOG_ERR, "NULL tagsistant_querytree object provided to %s", __func__);
 		return (NULL);
 	}
 
 #if TAGSISTANT_RDS_NEEDS_TREE
 	if (!qtree->tree) {
-		dbg('f', LOG_ERR, "NULL qtree_or_node object provided to %s", __func__);
+		dbg('R', LOG_ERR, "NULL qtree_or_node object provided to %s", __func__);
 		return (NULL);
 	}
 #endif
-
-	int is_all_path = is_all_path(qtree->full_path);
 
 	/*
 	 * Allocate the RDS structure
 	 */
 	tagsistant_rds *rds = g_new0(tagsistant_rds, 1);
 	if (!rds) {
-		dbg('f', LOG_ERR, "Error allocating memory for RDS: %s", strerror(errno));
+		dbg('R', LOG_ERR, "Error allocating memory for RDS: %s", strerror(errno));
 		return (NULL);
 	}
 
@@ -749,7 +769,7 @@ tagsistant_rds_new(tagsistant_querytree *qtree)
 #if TAGSISTANT_RDS_NEEDS_TREE
 	rds->tree = tagsistant_duplicate_tree(qtree->tree);
 #endif
-	rds->is_all_path = is_all_path;
+	rds->is_all_path = is_all_path(qtree->full_path);
 	rds->entries = NULL;
 
 	/*

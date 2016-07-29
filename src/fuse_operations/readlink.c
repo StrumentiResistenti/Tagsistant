@@ -49,6 +49,43 @@ int tagsistant_readlink(const char *path, char *buf, size_t size)
 		readlink_path = qtree->full_archive_path;
 	}
 
+	// -- export --
+	else if (QTREE_IS_EXPORT(qtree)) {
+		if (!qtree->inode) { TAGSISTANT_ABORT_OPERATION(EIO); }
+
+		/*
+		 * just to be sure, rebuild the querytree internal paths
+		 */
+		tagsistant_querytree_rebuild_paths(qtree);
+
+		/*
+		 * go back once for the tag and again for the export/ dir,
+		 * then enter archive, the whole stack of reversed inode and
+		 * finally put the filename here
+		 */
+		gchar *tmp = g_strdup_printf("../../archive%s", qtree->archive_path);
+
+		/*
+		 * get the length of the link contents and guess if the FUSE
+		 * buffer is big enough to hold it. Otherwise return just part
+		 * of the content
+		 */
+		size_t tmp_len = strlen(tmp);
+		res = (size - 1 < tmp_len) ? size - 1 : tmp_len;
+
+		/*
+		 * fill the buffer and terminate it
+		 */
+		memcpy(buf, tmp, res);
+		buf[res] = '\0';
+
+		/*
+		 * clean and skip the rest
+		 */
+		g_free(tmp);
+		goto TAGSISTANT_EXIT_OPERATION;
+	}
+
 	// -- alias --
 	// -- stats --
 	// -- tags --

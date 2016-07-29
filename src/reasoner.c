@@ -123,11 +123,13 @@ static int tagsistant_add_reasoned_tag(tagsistant_tag *T, tagsistant_reasoning *
 			related = related->related;
 		}
 
+#if 0
 		qtree_and_node *negated = and->negated;
 		while (negated) {
 			if (tagsistant_and_node_match(negated, T)) return (0);
 			negated = negated->negated;
 		}
+#endif
 
 		and = and->next;
 	}
@@ -151,19 +153,15 @@ static int tagsistant_add_reasoned_tag(tagsistant_tag *T, tagsistant_reasoning *
 	reasoned->negate = reasoning->negate;
 	reasoned->operator = TAGSISTANT_EQUAL_TO;
 
-	/* append the reasoned tag */
+	/*
+	 * prepend the reasoned tag
+	 */
 	if (reasoning->negate) {
-		qtree_and_node *last_reasoned = reasoning->current_node;
-		while (last_reasoned->negated) {
-			last_reasoned = last_reasoned->negated;
-		}
-		last_reasoned->negated = reasoned;
+		and->next = reasoning->or_node->negated_and_set;
+		reasoning->or_node->negated_and_set = and;
 	} else {
-		qtree_and_node *last_reasoned = reasoning->current_node;
-		while (last_reasoned->related) {
-			last_reasoned = last_reasoned->related;
-		}
-		last_reasoned->related = reasoned;
+		and->next = reasoning->or_node->and_set;
+		reasoning->or_node->and_set = and;
 	}
 
 	reasoning->added_tags += 1;
@@ -265,7 +263,7 @@ int tagsistant_reasoner_inner(tagsistant_reasoning *reasoning, int do_caching)
 		}
 
 		/*
-		 * the result wasn't cached, so we lookup it in the DB, starting
+		 * the result wasn't cached, so we look it up in the DB, starting
 		 * from the positive relations 'includes' and 'is_equivalent'
 		 */
 		reasoning->negate = 0;

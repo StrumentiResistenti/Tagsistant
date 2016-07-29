@@ -89,6 +89,9 @@ GHashTable *tagsistant_tag_cache = NULL;
 /** regular expressions used to escape query parameters */
 GRegex *RX1, *RX2, *RX3;
 
+/** the query used by tagsistant_is_tagged to check if an object is still tagged */
+gchar *tagsistant_tagging_check_query = NULL;
+
 /**
  * Initialize libDBI structures
  */
@@ -206,6 +209,14 @@ void tagsistant_db_init()
 	RX1 = g_regex_new("[\"']", 0, 0, NULL);
 	RX2 = g_regex_new("'", 0, 0, NULL);
 	RX3 = g_regex_new("<><>", 0, 0, NULL);
+
+	/* initialize the query used to check if an object is still tagged by at least one tag */
+	tagsistant_tagging_check_query = (!tagsistant.trash) ?
+		"select inode from tagging where inode = %d limit 1" :
+		"select inode from tagging "
+			"join tags on tags.tag_id = tagging.tag_id "
+			"where inode = %d and "
+			"tagname <> \"" TAGSISTANT_TRASH_TAG "\" limit 1";
 }
 
 /**
@@ -227,8 +238,10 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 	dbi_conn dbi = NULL;
 
 	if (start_transaction) {
+		dbg('s', LOG_ERR, "Writer-locking query rwlock");
 		g_rw_lock_writer_lock(&(tagsistant_query_rwlock));
 	} else {
+		dbg('s', LOG_ERR, "Read-locking query rwlock");
 		g_rw_lock_reader_lock(&(tagsistant_query_rwlock));
 	}
 
@@ -361,8 +374,10 @@ void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_locked)
 	g_mutex_unlock(&tagsistant_connection_pool_lock);
 
 	if (is_writer_locked) {
+		dbg('s', LOG_ERR, "Writer-un-locking query rwlock");
 		g_rw_lock_writer_unlock(&tagsistant_query_rwlock);
 	} else {
+		dbg('s', LOG_ERR, "Reader-un-locking query rwlock");
 		g_rw_lock_reader_unlock(&tagsistant_query_rwlock);
 	}
 }
@@ -423,7 +438,7 @@ void tagsistant_create_schema()
 				"create table if not exists objects ("
 					"inode integer not null primary key autoincrement, "
 					"objectname text(255) not null, "
-					"last_autotag timestamp not null default 0, "
+					"last_autotag timestamp not null, "
 					"checksum text(40) not null default '', "
 					"symlink text(1024) not null default '')",
 				dbi, NULL, NULL);
@@ -488,6 +503,13 @@ void tagsistant_create_schema()
 			tagsistant_query("create index if not exists aliases_index on aliases (alias)", dbi, NULL, NULL);
 			tagsistant_query("create index if not exists rds_index1 on rds (id, reasoned, objectname, inode)", dbi, NULL, NULL);
 			tagsistant_query("create index if not exists rds_index2 on rds (id, reasoned, inode, objectname)", dbi, NULL, NULL);
+
+			/*
+			 * Create special tags
+			 */
+			tagsistant_query(
+				"insert into tags (tagname, `key`, `value`) values (\"%s\", \"\", \"\")",
+				dbi, NULL, NULL, TAGSISTANT_TRASH_TAG);
 
 			tagsistant_query("delete from schema_version", dbi, NULL, NULL);
 			tagsistant_query("insert into schema_version (version) values (\"%s\")",
@@ -598,6 +620,13 @@ void tagsistant_create_schema()
 			tagsistant_query("create index aliases_index on aliases (alias)", dbi, NULL, NULL);
 			tagsistant_query("create index rds_index1 on rds (id, reasoned, objectname, inode)", dbi, NULL, NULL);
 			tagsistant_query("create index rds_index2 on rds (id, reasoned, inode, objectname)", dbi, NULL, NULL);
+
+			/*
+			 * Create special tags
+			 */
+			tagsistant_query(
+				"insert into tags (tagname, `key`, `value`) values (\"%s\", \"\", \"\")",
+				dbi, NULL, NULL, TAGSISTANT_TRASH_TAG);
 
 			/*
 			 * Schema version update
@@ -1159,7 +1188,7 @@ int tagsistant_object_is_tagged(dbi_conn conn, tagsistant_inode inode)
 	tagsistant_inode still_exists = 0;
 
 	tagsistant_query(
-		"select inode from tagging where inode = %d limit 1",
+		tagsistant_tagging_check_query,
 		conn, tagsistant_return_integer, &still_exists, inode);
 	
 	return ((still_exists) ? 1 : 0);
@@ -1266,6 +1295,11 @@ void tagsistant_remove_tag_from_cache(const gchar *tagname, const gchar *key, co
  */
 void tagsistant_sql_delete_tag(dbi_conn conn, const gchar *tagname, const gchar *key, const gchar *value)
 {
+	/*
+	 * don't delete special tags
+	 */
+	if (g_strcmp0(tagname, TAGSISTANT_TRASH_TAG) is 0) return;
+
 	tagsistant_inode tag_id = tagsistant_sql_get_tag_id(conn, tagname, _safe_string(key), _safe_string(value));
 	tagsistant_remove_tag_from_cache(tagname, _safe_string(key), _safe_string(value));
 
@@ -1334,7 +1368,7 @@ void tagsistant_sql_untag_object(dbi_conn conn, const gchar *tagname, const gcha
 	}
 
 	tagsistant_query(
-		"delete from tagging where tag_id = '%d' and inode = '%d'",
+		"delete from tagging where tag_id = %d and inode = %d",
 		conn, NULL, NULL, tag_id, inode);
 }
 

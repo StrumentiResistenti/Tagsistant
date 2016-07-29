@@ -142,6 +142,7 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"    -v                       verbose syslogging\n"
 		"    -f                       run in foreground\n"
 		"    -s                       run single threaded\n"
+		"    --enable-trash, -t       enable %s trash tag\n"
 		"    --no-autotagging, -a     disable autotagging\n"
 		"    --open-permission, -P    relax metadirectories permissions to 0777 \n"
 		"    --multi-symlink, -m      create multiple symlink with the same name if\n"
@@ -162,11 +163,12 @@ void tagsistant_usage(gchar *progname, int verbose)
 		"                               p: plugin\n"
 		"                               q: query parsing\n"
 		"                               r: reasoning\n"
+		"                               R: RDS\n"
 		"                               s: SQL queries\n"
 		"                               2: deduplication\n"
 		"\n%s"
 		, PACKAGE_VERSION, TAGSISTANT_CODENAME, TAGSISTANT_BUILDNUMBER
-		, FUSE_USE_VERSION, license, progname, progname, endnote
+		, FUSE_USE_VERSION, license, progname, progname, TAGSISTANT_TRASH_TAG, endnote
 	);
 }
 
@@ -225,6 +227,7 @@ static GOptionEntry tagsistant_options[] =
   { "repository", 0, 0,			G_OPTION_ARG_FILENAME,			&tagsistant.repository, 		"Repository path", "<repository path>" },
   { "foreground", 'f', 0, 		G_OPTION_ARG_NONE, 				&tagsistant.foreground, 		"Run in foreground", NULL },
   { "single-thread", 's', 0,	G_OPTION_ARG_NONE,				&tagsistant.singlethread, 		"Don't spawn other threads", NULL },
+  { "enable-trash", 't', 0,		G_OPTION_ARG_NONE,				&tagsistant.trash,		 		"Enable " TAGSISTANT_TRASH_TAG " at boot", NULL },
   { "db", 0, 0,					G_OPTION_ARG_STRING,			&tagsistant.dboptions, 			"Database connection options", "backend:[host:[db:[user:[password]]]]" },
   { "tags-suffix", 0, 0, 		G_OPTION_ARG_STRING, 			&tagsistant.tags_suffix, 		"The filenames suffix used to list their tags (default .tags)", TAGSISTANT_DEFAULT_TAGS_SUFFIX },
   { "readonly", 'r', 0, 		G_OPTION_ARG_NONE,				&tagsistant.readonly, 			"Mount read-only", NULL },
@@ -518,7 +521,7 @@ int main(int argc, char *argv[])
 		" Tagsistant (tagfs) v.%s (codename: %s)\n"
 		" Build: %s FUSE_USE_VERSION: %d\n"
 		" (c) 2006-2014 Tx0 <tx0@strumentiresistenti.org>\n"
-		" For license informations, see %s -h\n\n"
+		" For license information, see %s -h\n\n"
 		, PACKAGE_VERSION, TAGSISTANT_CODENAME, TAGSISTANT_BUILDNUMBER
 		, FUSE_USE_VERSION, tagsistant.progname
 	);
@@ -605,6 +608,12 @@ int main(int argc, char *argv[])
 		}
 	}
 	chmod(tagsistant.archive, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+
+	tagsistant.link = g_strdup_printf("%s/link", tagsistant.repository);
+	if (symlink("repository.ini", tagsistant.link) isNot 0 && errno isNot EEXIST) {
+		dbg('b', LOG_ERR, "Error creating internal link to repository.ini: %s", strerror(errno));
+		exit(1);
+	}
 
 	dbg('b', LOG_INFO, "Debug is enabled: %s", tagsistant.debug ? "yes" : "no");
 

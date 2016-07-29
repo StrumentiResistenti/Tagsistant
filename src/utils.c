@@ -459,7 +459,10 @@ gchar *tagsistant_get_file_tags(tagsistant_querytree *qtree)
 	/* free the stripped path */
 	g_free(stripped_path);
 	
-	if (!stripped_qtree->inode) return (NULL);
+	if (!stripped_qtree->inode) {
+		tagsistant_querytree_destroy(stripped_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
+		return (NULL);
+	}
 	
 	/* allocate a buffer GString and fill it with the tags bound to the file */
 	GString *tagsbuffer = g_string_sized_new(1024);
@@ -480,4 +483,40 @@ gchar *tagsistant_get_file_tags(tagsistant_querytree *qtree)
 	tagsistant_querytree_destroy(stripped_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 
 	return (tags_list);
+}
+
+/**
+ * check if an object must be deleted or not and deletes it from the DB.
+ * if .Trash is enabled, the object is moved there and FALSE is returned.
+ * if TRUE is returned, the caller must unlink() or rmdir() the object
+ * from disk, as appropriate.
+ *
+ * @param qtree the querytree pointing to the object to dispose
+ * @return TRUE if the object must be deleted on disk, FALSE otherwise
+ */
+gboolean tagsistant_dispose_object_if_untagged(tagsistant_querytree *qtree)
+{
+	if (!tagsistant_object_is_tagged(qtree->dbi, qtree->inode)) {
+		/*
+		 * if trash is enabled, move the object there
+		 */
+		if (tagsistant.trash) {
+			/*
+			 * but only if the .Trash tag is not in the path, otherwise
+			 * delete the object once for all
+			 */
+			if (tagsistant_querytree_includes_tag(qtree, TAGSISTANT_TRASH_TAG, NULL, NULL, NULL)) {
+				tagsistant_query("delete from objects where inode = %d", qtree->dbi, NULL, NULL, qtree->inode);
+			} else {
+				tagsistant_sql_tag_object(qtree->dbi, TAGSISTANT_TRASH_TAG, "", "", qtree->inode);
+				return (FALSE);
+			}
+		} else {
+			tagsistant_query("delete from objects where inode = %d", qtree->dbi, NULL, NULL, qtree->inode);
+		}
+	} else {
+		return (FALSE);
+	}
+
+	return (TRUE);
 }

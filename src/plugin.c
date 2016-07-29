@@ -142,7 +142,7 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	if (!mime_type) {
 		/* lock processor mutex */
 		g_mutex_unlock(&tagsistant_processor_mutex);
-		tagsistant_querytree_destroy(qtree, 1);
+		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return(res);
 	}
 
@@ -204,7 +204,7 @@ STOP_CHAIN_TAGGING:
 
 	dbg('p', LOG_INFO, "Processing of %s ended.", qtree->full_archive_path);
 
-	tagsistant_querytree_destroy(qtree, 1);
+	tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 
 	/* free the keyword structure */
 	EXTRACTOR_freeKeywords(extracted_keywords);
@@ -342,7 +342,7 @@ int tagsistant_process(gchar *path, gchar *full_archive_path)
 	}
 
 STOP_CHAIN_TAGGING:
-	tagsistant_querytree_destroy(qtree, 1);
+	tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 	return (res);
 }
 
