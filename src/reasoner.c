@@ -83,7 +83,7 @@ int tagsistant_and_node_match(qtree_and_node *and, tagsistant_tag *T)
 
 #if 0
 	//
-	// Perché qui la comparazione di "prova2" e "prova5" è vera?????
+	// Perch�� qui la comparazione di "prova2" e "prova5" �� vera?????
 	//
 	if (and->tag && (strcmp(and->tag, T->tag) is 0)) {
 		return (1);
@@ -108,10 +108,11 @@ int tagsistant_and_node_match(qtree_and_node *and, tagsistant_tag *T)
  */
 static int tagsistant_add_reasoned_tag(tagsistant_tag *T, tagsistant_reasoning *reasoning)
 {
-#if 1
-	/* check for duplicates */
+	/*
+	 * check for duplicates
+	 */
 	qtree_and_node *and = reasoning->start_node;
-	while (and) {
+	while (and && and->next) {
 		/*
 		 * avoid duplicates
 		 */
@@ -123,19 +124,12 @@ static int tagsistant_add_reasoned_tag(tagsistant_tag *T, tagsistant_reasoning *
 			related = related->related;
 		}
 
-#if 0
-		qtree_and_node *negated = and->negated;
-		while (negated) {
-			if (tagsistant_and_node_match(negated, T)) return (0);
-			negated = negated->negated;
-		}
-#endif
-
 		and = and->next;
 	}
-#endif
 
-	/* adding tag */
+	/*
+	 * copy the reasoned tag in a qtree_and_node struct
+	 */
 	qtree_and_node *reasoned = g_new0(qtree_and_node, 1);
 
 	if (!reasoned) {
@@ -156,13 +150,18 @@ static int tagsistant_add_reasoned_tag(tagsistant_tag *T, tagsistant_reasoning *
 	/*
 	 * prepend the reasoned tag
 	 */
+	reasoned->related = reasoning->current_node->related;
+	reasoning->current_node->related = reasoned;
+
+#if 0
 	if (reasoning->negate) {
-		and->next = reasoning->or_node->negated_and_set;
-		reasoning->or_node->negated_and_set = and;
+		reasoned->next = reasoning->or_node->negated_and_set;
+		reasoning->or_node->negated_and_set = reasoned;
 	} else {
-		and->next = reasoning->or_node->and_set;
-		reasoning->or_node->and_set = and;
+		reasoned->next = reasoning->or_node->and_set;
+		reasoning->or_node->and_set = reasoned;
 	}
+#endif
 
 	reasoning->added_tags += 1;
 	return (reasoning->added_tags);
@@ -177,7 +176,9 @@ static int tagsistant_add_reasoned_tag(tagsistant_tag *T, tagsistant_reasoning *
  */
 static int tagsistant_add_reasoned_tag_callback(void *_reasoning, dbi_result result)
 {
-	/* point to a reasoning_t structure */
+	/*
+	 * point to a reasoning_t structure
+	 */
 	tagsistant_reasoning *reasoning = (tagsistant_reasoning *) _reasoning;
 
 	/*

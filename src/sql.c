@@ -515,6 +515,15 @@ void tagsistant_create_schema()
 			tagsistant_query("insert into schema_version (version) values (\"%s\")",
 				dbi, NULL, NULL, TAGSISTANT_SCHEMA_VERSION);
 
+			/*
+			 * Helper views
+			 */
+			tagsistant_query(
+				"create or replace view full_tagging as "
+					"select tagging.inode, tags.tag_id, tags.tagname, tags.key, tags.value "
+					"from tagging join tags on tags.tag_id = tagging.tag_id",
+				dbi, NULL, NULL);
+
 			break;
 
 		case TAGSISTANT_DBI_MYSQL_BACKEND:
@@ -555,7 +564,7 @@ void tagsistant_create_schema()
 				"create table if not exists objects ("
 					"inode integer not null primary key auto_increment, "
 					"objectname varchar(255) not null, "
-					"last_autotag timestamp not null default 0, "
+					"last_autotag timestamp not null default now(), "
 					"checksum varchar(40) not null default '', "
 					"symlink varchar(1024) not null default '')",
 				dbi, NULL, NULL);
@@ -600,7 +609,7 @@ void tagsistant_create_schema()
 					"inode integer not null, "
 					"objectname text(255) not null, "
 					"tagset text not null, "
-					"creation datetime not null) ENGINE = MEMORY",
+					"creation datetime not null)",
 				dbi, NULL, NULL);
 
 			tagsistant_query(
@@ -634,6 +643,16 @@ void tagsistant_create_schema()
 			tagsistant_query("delete from schema_version", dbi, NULL, NULL);
 			tagsistant_query("insert into schema_version (version) values (\"%s\")",
 				dbi, NULL, NULL, TAGSISTANT_SCHEMA_VERSION);
+
+			/*
+			 * Helper views
+			 */
+			tagsistant_query(
+				"create or replace view full_tagging as "
+					"select tagging.inode, tags.tag_id, tags.tagname, tags.key, tags.value "
+					"from tagging join tags on tags.tag_id = tagging.tag_id",
+				dbi, NULL, NULL);
+
 
 			break;
 

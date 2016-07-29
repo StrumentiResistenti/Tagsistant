@@ -275,6 +275,181 @@ gchar *tagsistant_compute_rds_sources(tagsistant_querytree *qtree)
 }
 #endif
 
+void
+tagsistant_rds_materialize_add_equal_and_set(
+	GString *statement,
+	qtree_and_node *and_set,
+	const gchar *tname)
+{
+	g_string_append_printf(statement, "%s.tag_id in (%d", tname, and_set->tag_id);
+	qtree_and_node *related = and_set->related;
+	while (related) {
+		g_string_append_printf(statement, ", %d", related->tag_id);
+		related = related->related;
+	}
+	g_string_append_printf(statement, ") ");
+}
+
+void
+tagsistant_rds_materialize_add_and_set(GString *statement, qtree_and_node *and_set)
+{
+	if (!and_set) {
+		dbg('R', LOG_ERR, "tagsistant_query_add_and_set() called with NULL and_set");
+		return;
+	}
+
+	if (!statement) {
+		dbg('R', LOG_ERR, "tagsistant_query_add_and_set() called with NULL statement");
+		return;
+	}
+
+	/*
+	 * compute the full_tagging alias on the and_set memory address
+	 */
+	gchar *tname = g_strdup_printf("a%.16" PRIxPTR, (uintptr_t) and_set);
+
+	/*
+	 * add the first part of the template
+	 */
+	g_string_append_printf(statement,
+		"join full_tagging %s on %s.inode = objects.inode and ",
+		tname, tname);
+
+	/*
+	 * now add the main part
+	 */
+	if (and_set->value && strlen(and_set->value)) {
+		switch (and_set->operator) {
+			case TAGSISTANT_EQUAL_TO:
+				tagsistant_rds_materialize_add_equal_and_set(statement, and_set, tname);
+				break;
+			case TAGSISTANT_CONTAINS:
+				g_string_append_printf(statement,
+					"tagname = \"%s\" and `key` = \"%s\" and value like '%%%s%%' ",
+					and_set->namespace,
+					and_set->key,
+					and_set->value);
+				break;
+			case TAGSISTANT_GREATER_THAN:
+				g_string_append_printf(statement,
+					"tagname = \"%s\" and `key` = \"%s\" and value > \"%s\" ",
+					and_set->namespace,
+					and_set->key,
+					and_set->value);
+				break;
+			case TAGSISTANT_SMALLER_THAN:
+				g_string_append_printf(statement,
+					"tagname = \"%s\" and `key` = \"%s\" and value < \"%s\" ",
+					and_set->namespace,
+					and_set->key,
+					and_set->value);
+				break;
+		}
+	} else if (and_set->tag || and_set->tag_id) {
+		tagsistant_rds_materialize_add_equal_and_set(statement, and_set, tname);
+	} else {
+		dbg('R', LOG_ERR, "Invalid tag with no value and no tag_id");
+		g_string_append_printf(statement, "true ");
+	}
+
+	g_free(tname);
+}
+
+void
+tagsistant_rds_materialize_add_negated_and_set(
+	GString *statement,
+	qtree_and_node *and_set)
+{
+	if (and_set) {
+		g_string_append_printf(statement,
+			"left outer join full_tagging neg "
+				"on neg.inode = objects.inode "
+				"and neg.tag_id in (%d",
+			and_set->tag_id);
+
+		qtree_and_node *next = and_set->next;
+		while (next) {
+			g_string_append_printf(statement, ", %d", next->tag_id);
+			qtree_and_node *related = next->related;
+			while (related) {
+				g_string_append_printf(statement, ", %d", related->tag_id);
+				related = related->related;
+			}
+			next = next->next;
+		}
+		g_string_append_printf(statement, ") and neg.inode is null");
+	}
+}
+
+void
+tagsistant_rds_materialize_or_node(qtree_or_node *query, tagsistant_querytree *qtree)
+{
+	/*
+	 * skip OR nodes with no tags, including ALL/
+	 */
+	unless (query->is_all_node || query->and_set) return;
+
+	/*
+	 * start the SQL query to match all the criteria; this template
+	 * will be followed:
+	 *
+	 *   create temporary table tv0123456789 as
+     *   select
+     *       o.inode, o.objectname, o...
+     *   from
+     *       objects o
+     *   join
+     *       full_tagging a1 on a1.inode = o.inode and a1.tag_id in (t1, t11)
+     *   join
+     *       full_tagging a2 on a2.inode = o.inode and a2.tag_id in (t2)
+     *   join
+     *       full_tagging a3 on a3.inode = o.inode and a3.tag_id in (t3)
+     *   left outer join
+     *       tagging neg on neg.inode = o.inode and
+     *       neg.tag_id in (t4, t5, t51) and
+     *       neg.inode is null
+     *   ;
+     *
+     * The only exception is a query with the ALL/ tag, which will load all
+     * the objects.
+	 */
+	GString *create_base_table = g_string_sized_new(51200);
+	if (query->is_all_node) {
+
+		g_string_printf(create_base_table,
+			"create temporary table tv%.16" PRIxPTR " as "
+			"select inode, objectname from objects",
+			(uintptr_t) query);
+
+	} else if (query->and_set) {
+
+		g_string_append_printf(create_base_table,
+			"create temporary table tv%.16" PRIxPTR " as "
+			"select objects.inode, objects.objectname from objects ",
+			(uintptr_t) query);
+
+		/*
+		 * add each qtree_and_node (and its ->related nodes) to the query
+		 */
+		qtree_and_node *next_and = query->and_set;
+		while (next_and) {
+			tagsistant_rds_materialize_add_and_set(create_base_table, next_and);
+			next_and = next_and->next;
+		}
+
+		/*
+		 * add each negated qtree_and_node to the query
+		 */
+		tagsistant_rds_materialize_add_negated_and_set(create_base_table, query->negated_and_set);
+	}
+
+	/*
+	 * create the table and dispose the statement GString
+	 */
+	tagsistant_query(create_base_table->str, qtree->dbi, NULL, NULL);
+	g_string_free(create_base_table, TRUE);
+}
+
 /**
  * Materialize the RDS of a query
  *
@@ -304,25 +479,6 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	g_hash_table_ref(rds->entries);
 
 	/*
-	 * If the RDS is an ALL path, just load all the objects
-	 */
-#if 0
-	if (rds->is_all_path) {
-		tagsistant_query(
-			"select inode, objectname from objects",
-			qtree->dbi,
-			(tagsistant_query_callback) tagsistant_rds_materialize_entry,
-			rds);
-
-		/*
-		 * remove entry duplicates
-		 */
-		g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_rds_uniq_entries, rds);
-		return (TRUE);
-	}
-#endif
-
-	/*
 	 * PHASE 1.
 	 * Build a set of temporary tables containing all the matched objects
 	 *
@@ -331,145 +487,7 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	qtree_or_node *query = qtree->tree;
 
 	while (query) {
-		qtree_and_node *next_and = query->and_set;
-
-		/*
-		 * skip OR nodes with no tags, including ALL/
-		 */
-		unless (query->is_all_node || next_and) {
-			query = query->next;
-			continue;
-		}
-
-		/*
-		 * create the base table with all the objects tagged with the first
-		 * tag (or all the object, if the OR node contains the ALL/ tag)
-		 */
-		GString *create_base_table = g_string_sized_new(51200);
-		if (query->is_all_node) {
-			g_string_printf(create_base_table,
-				"create temporary table tv%.16" PRIxPTR " as "
-				"select inode, objectname from objects",
-				(uintptr_t) query);
-		} else if (next_and) {
-			g_string_append_printf(create_base_table,
-				"create temporary table tv%.16" PRIxPTR " as "
-				"select objects.inode, objects.objectname from objects "
-					"join tagging on tagging.inode = objects.inode "
-					"join tags on tags.tag_id = tagging.tag_id "
-					"where ",
-				(uintptr_t) query);
-
-			/*
-			 * add each qtree_and_node (main and ->related) to the query
-			 */
-			tagsistant_query_add_and_set(create_base_table, next_and);
-
-			qtree_and_node *related = next_and ? next_and->related : NULL;
-			while (related) {
-				g_string_append(create_base_table, " or ");
-				tagsistant_query_add_and_set(create_base_table, related);
-				related = related->related;
-			}
-
-			/*
-			 * slide to next tag
-			 */
-			next_and = next_and->next;
-		}
-
-		/*
-		 * create the table and dispose the statement GString
-		 */
-		tagsistant_query(create_base_table->str, qtree->dbi, NULL, NULL);
-		g_string_free(create_base_table, TRUE);
-
-		/*
-		 * Step 1.2.
-		 * for each ->next linked node, subtract from the base table
-		 * the objects not matching this node
-		 */
-		while (next_and) {
-			GString *cross_tag = g_string_sized_new(51200);
-			g_string_append_printf(cross_tag,
-				"delete from tv%.16" PRIxPTR " where inode not in ("
-				"select objects.inode from objects "
-					"join tagging on tagging.inode = objects.inode "
-					"join tags on tags.tag_id = tagging.tag_id "
-					"where ",
-				(uintptr_t) query);
-
-			/*
-			 * add each qtree_and_node (main and ->related) to the query
-			 */
-			tagsistant_query_add_and_set(cross_tag, next_and);
-
-			qtree_and_node *related = next_and->related;
-			while (related) {
-				g_string_append(cross_tag, " or ");
-				tagsistant_query_add_and_set(cross_tag, related);
-				related = related->related;
-			}
-
-			/*
-			 * close the subquery
-			 */
-			g_string_append(cross_tag, ")");
-
-			/*
-			 * apply the query and dispose the statement GString
-			 */
-			tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
-			g_string_free(cross_tag, TRUE);
-
-			next_and = next_and->next;
-		}
-
-		/*
-		 * Step 1.3.
-		 * for each ->negated linked node, subtract from the base table
-		 * the objects that do match this node
-		 */
-		qtree_and_node *next_negated = query->negated_and_set;
-		while (next_negated) {
-			GString *cross_tag = g_string_sized_new(51200);
-			g_string_append_printf(cross_tag,
-				"delete from tv%.16" PRIxPTR " where inode in ("
-				"select objects.inode from objects "
-					"join tagging on tagging.inode = objects.inode "
-					"join tags on tags.tag_id = tagging.tag_id "
-					"where ",
-				(uintptr_t) query);
-
-			/*
-			 * add each qtree_and_node (main and ->related) to the query
-			 */
-			tagsistant_query_add_and_set(cross_tag, next_negated);
-
-			qtree_and_node *related = next_negated->related;
-			while (related) {
-				g_string_append(cross_tag, " or ");
-				tagsistant_query_add_and_set(cross_tag, related);
-				related = related->related;
-			}
-
-			/*
-			 * close the subquery
-			 */
-			g_string_append(cross_tag, ")");
-
-			/*
-			 * apply the query and dispose the statement GString
-			 */
-			tagsistant_query(cross_tag->str, qtree->dbi, NULL, NULL);
-			g_string_free(cross_tag, TRUE);
-
-			next_negated = next_negated->next;
-		}
-
-		/*
-		 * move to the next qtree_or_node in the linked list
-		 */
+		tagsistant_rds_materialize_or_node(query, qtree);
 		query = query->next;
 	}
 
