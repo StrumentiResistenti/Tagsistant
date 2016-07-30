@@ -68,33 +68,10 @@ void tagsistant_reasoner_init()
  *
  * @param and the and_node to match
  * @param tag the flat tag
- * @param namespace the namespace of the triple tag
- * @param key the key of the triple tag
- * @param value the value of the triple tag
  */
-#define dont_tagsistant_and_node_match(and, T) (\
-	(and->tag && (g_strcmp0(and->tag, T->tag) is 0)) || \
-	(and->namespace && (g_strcmp0(and->namespace, T->namespace) is 0) && \
-	(g_strcmp0(and->key, T->key) is 0) && (g_strcmp0(and->value, T->value) is 0)))
-
 int tagsistant_and_node_match(qtree_and_node *and, tagsistant_tag *T)
 {
 	if (T->tag_id is and->tag_id) return (1);
-
-#if 0
-	//
-	// Perch�� qui la comparazione di "prova2" e "prova5" �� vera?????
-	//
-	if (and->tag && (strcmp(and->tag, T->tag) is 0)) {
-		return (1);
-	}
-
-	if (and->namespace && (strcmp(and->namespace, T->namespace) is 0) &&
-		(strcmp(and->key, T->key) is 0) && (strcmp(and->value, T->value) is 0)) {
-		return (1);
-	}
-#endif
-
 	return (0);
 }
 
@@ -152,16 +129,6 @@ static int tagsistant_add_reasoned_tag(tagsistant_tag *T, tagsistant_reasoning *
 	 */
 	reasoned->related = reasoning->current_node->related;
 	reasoning->current_node->related = reasoned;
-
-#if 0
-	if (reasoning->negate) {
-		reasoned->next = reasoning->or_node->negated_and_set;
-		reasoning->or_node->negated_and_set = reasoned;
-	} else {
-		reasoned->next = reasoning->or_node->and_set;
-		reasoning->or_node->and_set = reasoned;
-	}
-#endif
 
 	reasoning->added_tags += 1;
 	return (reasoning->added_tags);

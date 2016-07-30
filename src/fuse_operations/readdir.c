@@ -313,10 +313,14 @@ int tagsistant_readdir_on_store(
 	if (qtree->complete) {
 
 		if (qtree->error_message) {
-			/* report a file with the error message */
+			/*
+			 * report a file with the error message
+			 */
 			filler(buf, "error", NULL, 0);
 		} else {
-			/* build the filetree */
+			/*
+			 * build the filetree
+			 */
 			tagsistant_rds *rds = tagsistant_rds_new_or_lookup(qtree);
 			if (rds) {
 				tagsistant_rds_read_lock(rds, qtree);

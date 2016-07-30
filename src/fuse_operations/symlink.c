@@ -61,58 +61,89 @@ int tagsistant_symlink(const char *from, const char *to)
 
 		// if qtree is taggable, do it
 		if (QTREE_IS_TAGGABLE(to_qtree)) {
-			tagsistant_inode check_inode = 0;
-
 			if (tagsistant.multi_symlink) {
-				// 1. check if an object with the same name exists in the RDS
-				gchar *rds_id = tagsistant_get_rds_checksum(to_qtree);
 
-				tagsistant_query(
-					"select inode from rds "
-						"where id = \"%s\" and objectname = \"%s\"",
-						to_qtree->dbi,
-						tagsistant_return_integer,
-						&check_inode,
-						rds_id,
-						to_qtree->object_path);
+				tagsistant_rds *rds = tagsistant_rds_new_or_lookup(to_qtree);
+				if (rds) {
+					/*
+					 * fetch the inodes that map to the "to" path
+					 */
+					tagsistant_rds_read_lock(rds, to_qtree);
+					GList *inodes = g_hash_table_lookup(rds->entries, to_qtree->object_path);
+					tagsistant_rds_read_unlock(rds);
 
-				if (check_inode) {
-					// 2. check if it's a symlink
-					gchar *symlink_target;
+					if (inodes) {
+						/*
+						 * form a string of comma separated inodes
+						 */
+						GString *i = g_string_new("");
+						while (inodes) {
+							g_string_append_printf(i, "%d", GPOINTER_TO_UINT(inodes->data));
+							if (inodes->next) g_string_append_printf(i, ", ");
+						}
 
-					tagsistant_query(
-						"select symlink from objects "
-							"where objectname = \"%s\" and inode = %d",
+						/*
+						 * check if one of the inodes it's a symlink
+						 */
+						tagsistant_inode check_inode = 0;
+						tagsistant_query(
+							"select inode from objects "
+								"where objectname = \"%s\" "
+								"and symlink = \"%s\" "
+								"and inode in (%s)",
 							to_qtree->dbi,
-							tagsistant_return_string,
-							&symlink_target,
-							to_qtree->object_path,
-							check_inode);
+							tagsistant_return_integer, &check_inode,
+							to_qtree->object_path, from, i->str);
 
-					if (strlen(symlink_target)) {
-						// it's a symlink
-						if (strcmp(symlink_target, from) is 0) {
-							// 2.1. tag the available symlink with the new tag set
+						g_string_free(i, TRUE);
+
+						if (check_inode) {
+
+							/*
+							 * tag the available symlink with the new tag set
+							 */
 							dbg('F', LOG_INFO, "SYMLINK : Deduplicating on inode %d", check_inode);
 							tagsistant_querytree_traverse(to_qtree, tagsistant_sql_tag_object, check_inode);
+							g_assert(res is 0);
 							goto TAGSISTANT_EXIT_OPERATION;
+
 						} else {
-							// 2. create the object
+
+							/*
+							 * just create the object
+							 */
 							res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
 							if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
+
 						}
 					} else {
-						// 2. create the object
+
+						/*
+						 * no inode returned, just create the object
+						 */
 						res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
 						if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
+
 					}
 				} else {
-					// 2. create the object
+
+					/*
+					 * 2. just create the object (we should never reach this code, because
+					 *    it means that the RDS has not been created!)
+					 */
+					dbg('F', LOG_ERR, "Unable to get an RDS when symlink(%s, %s)", from, to_qtree->full_path);
 					res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
 					if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
+
 				}
+
 			} else {
-				// 1. check if a symlink pointing to "from" path is already in the DB
+
+				tagsistant_inode check_inode = 0;
+
+				/*
+				 * check if a symlink pointing to "from" path is already in the DB
+				 */
 				tagsistant_query(
 					"select inode from objects where symlink = '%s'",
 					to_qtree->dbi,
@@ -122,37 +153,48 @@ int tagsistant_symlink(const char *from, const char *to)
 
 				if (check_inode) {
 
-					// 2.1. tag the available symlink with the new tag set
+					/*
+					 * tag the available symlink with the new tag set
+					 */
 					dbg('F', LOG_INFO, "SYMLINK : Deduplicating on inode %d", check_inode);
 					tagsistant_querytree_traverse(to_qtree, tagsistant_sql_tag_object, check_inode);
-					goto TAGSISTANT_EXIT_OPERATION;
+					tagsistant_delete_rds_involved(to_qtree);
+					goto TAGSISTANT_EXIT_OPERATION; // skip the real symlink
 
 				} else {
 
-					// 2.1. create a new symlink
+					/*
+					 * create a new symlink
+					 */
 					res = tagsistant_create_symlink(to_qtree, from, &tagsistant_errno);
 					if (res is -1) goto TAGSISTANT_EXIT_OPERATION;
 				}
 			}
 
-			// clean the RDS library
-			tagsistant_delete_rds_involved(to_qtree);
-
+		} else {
 			/*
-			 * schedule the symlink for autotagging
+			 * not taggable??? why??? it should be taggable!!
 			 */
-			tagsistant_schedule_for_autotagging(to_qtree);
-		} else
-
-		// nothing to do about tags
-		{
-			dbg('F', LOG_ERR, "%s is not taggable!", to_qtree->full_path); // ??? why ??? should be taggable!!
+			dbg('F', LOG_ERR, "%s is not taggable!", to_qtree->full_path);
+			TAGSISTANT_ABORT_OPERATION(EINVAL);
 		}
 
-		// do the real symlink on disk
+		/*
+		 * do the real symlink on disk
+		 */
 		dbg('F', LOG_INFO, "Symlinking %s to %s", from, to_qtree->object_path);
 		res = symlink(from, to_qtree->full_archive_path);
 		tagsistant_errno = errno;
+
+		/*
+		 * clean the RDS library
+		 */
+		tagsistant_delete_rds_involved(to_qtree);
+
+		/*
+		 * schedule the symlink for autotagging
+		 */
+		tagsistant_schedule_for_autotagging(to_qtree);
 	}
 
 	// -- store (not complete) --

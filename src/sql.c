@@ -474,18 +474,8 @@ void tagsistant_create_schema()
 				dbi, NULL, NULL, TAGSISTANT_ALIAS_MAX_LENGTH);
 
 			/*
-			 * RDS table
+			 * Write-ahead log (WAL) status
 			 */
-			tagsistant_query(
-				"create temporary table if not exists rds ("
-					"id varchar(32) not null, "
-					"reasoned integer not null, "
-					"inode integer not null, "
-					"objectname text(255) not null, "
-					"tagset text not null, "
-					"creation datetime not null default CURRENT_DATE)",
-				dbi, NULL, NULL);
-
 			tagsistant_query(
 				"create table if not exists status ("
 					"state varchar(16) primary key not null, "
@@ -600,18 +590,8 @@ void tagsistant_create_schema()
 				dbi, NULL, NULL, TAGSISTANT_ALIAS_MAX_LENGTH);
 
 			/*
-			 * RDS table
+			 * Write-ahead log (WAL) status
 			 */
-			tagsistant_query(
-				"create temporary table if not exists rds ("
-					"id varchar(32) not null, "
-					"reasoned integer not null, "
-					"inode integer not null, "
-					"objectname text(255) not null, "
-					"tagset text not null, "
-					"creation datetime not null)",
-				dbi, NULL, NULL);
-
 			tagsistant_query(
 				"create table if not exists status ("
 					"state varchar(16) primary key not null, "
@@ -652,7 +632,6 @@ void tagsistant_create_schema()
 					"select tagging.inode, tags.tag_id, tags.tagname, tags.key, tags.value "
 					"from tagging join tags on tags.tag_id = tagging.tag_id",
 				dbi, NULL, NULL);
-
 
 			break;
 

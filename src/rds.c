@@ -35,7 +35,7 @@ GRWLock tagsistant_rds_cache_rwlock;
 GHashTable *tagsistant_rds_cache = NULL;
 
 /**
- * add a file to the file tree (callback function)
+ * add a file to the RDS (callback function)
  *
  * @param hash_table_pointer a GHashTable to hold results
  * @param result a DBI result
@@ -111,65 +111,8 @@ tagsistant_rds_uniq_entries(gchar *object_name, GList *inode_list, tagsistant_rd
 	g_hash_table_unref (set);
 }
 
-
 /**
- * Add a filter criterion to a WHERE clause based on a qtree_and_node object
- *
- * @param statement a GString object holding the building query statement
- * @param and_set the qtree_and_node object describing the tag to be added as a criterion
- */
-void tagsistant_query_add_and_set(GString *statement, qtree_and_node *and_set)
-{
-	if (!and_set) {
-		dbg('R', LOG_ERR, "tagsistant_query_add_and_set() called with NULL and_set");
-		return;
-	}
-
-	if (!statement) {
-		dbg('R', LOG_ERR, "tagsistant_query_add_and_set() called with NULL statement");
-		return;
-	}
-
-	if (and_set->value && strlen(and_set->value)) {
-		switch (and_set->operator) {
-			case TAGSISTANT_EQUAL_TO:
-				g_string_append_printf(statement,
-					"tagname = \"%s\" and `key` = \"%s\" and value = \"%s\" ",
-					and_set->namespace,
-					and_set->key,
-					and_set->value);
-				break;
-			case TAGSISTANT_CONTAINS:
-				g_string_append_printf(statement,
-					"tagname = \"%s\" and `key` = \"%s\" and value like '%%%s%%' ",
-					and_set->namespace,
-					and_set->key,
-					and_set->value);
-				break;
-			case TAGSISTANT_GREATER_THAN:
-				g_string_append_printf(statement,
-					"tagname = \"%s\" and `key` = \"%s\" and value > \"%s\" ",
-					and_set->namespace,
-					and_set->key,
-					and_set->value);
-				break;
-			case TAGSISTANT_SMALLER_THAN:
-				g_string_append_printf(statement,
-					"tagname = \"%s\" and `key` = \"%s\" and value < \"%s\" ",
-					and_set->namespace,
-					and_set->key,
-					and_set->value);
-				break;
-		}
-	} else if (and_set->tag) {
-		g_string_append_printf(statement, "tagname = \"%s\" ", and_set->tag);
-	} else if (and_set->tag_id) {
-		g_string_append_printf(statement, "tagging.tag_id = %d ", and_set->tag_id);
-	}
-}
-
-/*
- * Return the query portion up to the delimiter token
+ * Return the query portion including the delimiter token
  *
  * @param qtree the tagsistant_querytree object
  * @return a string containing the query up to the delimiter token
@@ -185,7 +128,7 @@ gchar *tagsistant_rds_path(tagsistant_querytree *qtree)
 	return (path);
 }
 
-/*
+/**
  * Compute the checksum identifying a RDS
  *
  * @param qtree the tagsistant_querytree object
@@ -207,79 +150,15 @@ gchar *tagsistant_get_rds_checksum(tagsistant_querytree *qtree)
 	return (checksum);
 }
 
-#if 0
-/*
- * Append a tag to a sources GString
+/**
+ * Add a qtree_and_node struct to a building query, including all its
+ * related (reasoned) tags
  *
- * @param sources a GString object containing the source string
- * @param and a qtree_and_node to be added to the source string
+ * @param statement the GStream object with the under-construction query
+ * @param and_set the qtree_and_node set to add
+ * @param tname the alias used in the query to disambiguate tagging table
  */
-void tagsistant_register_rds_source(GString *sources, qtree_and_node *and)
-{
-	gchar *tag = (and->namespace && strlen(and->namespace)) ? and->namespace : and->tag;
-	g_string_append(sources, tag);
-	g_string_append(sources, "|");
-}
-
-/*
- * Create a new RDS for the query and return its id.
- *
- * @param query the query that generates the RDS
- * @return the RDS id
- */
-gchar *tagsistant_compute_rds_sources(tagsistant_querytree *qtree)
-{
-	GString *sources = g_string_sized_new(64000);
-	g_string_append(sources, "|");
-
-	/*
-	 * For every subquery, save the source tags
-	 */
-	qtree_or_node *query = qtree->tree;
-	while (query) {
-		/*
-		 * Register every tag...
-		 */
-		qtree_and_node *and = query->and_set;
-
-		while (and) {
-			tagsistant_register_rds_source(sources, and);
-
-			/*
-			 * ... and every related tag ...
-			 */
-			qtree_and_node *related = and->related;
-			while (related) {
-				tagsistant_register_rds_source(sources, related);
-				related = related->related;
-			}
-
-			/*
-			 * ... and even negated tags.
-			 */
-			qtree_and_node *negated = and->negated;
-			while (negated) {
-				tagsistant_register_rds_source(sources, negated);
-				negated = negated->negated;
-			}
-
-			and = and->next;
-		}
-		query = query->next;
-	}
-
-	/*
-	 * Free the GString object and return the sources string
-	 */
-	gchar *source_string = sources->str;
-	g_string_free(sources, FALSE);
-
-	return (source_string);
-}
-#endif
-
-void
-tagsistant_rds_materialize_add_equal_and_set(
+void tagsistant_rds_materialize_add_equal_and_set(
 	GString *statement,
 	qtree_and_node *and_set,
 	const gchar *tname)
@@ -293,8 +172,17 @@ tagsistant_rds_materialize_add_equal_and_set(
 	g_string_append_printf(statement, ") ");
 }
 
-void
-tagsistant_rds_materialize_add_and_set(GString *statement, qtree_and_node *and_set)
+/**
+ * Add a qtree_and_node struct to a building query. If the node is a simple
+ * tag or a triple equal tag (ns:/key/eq/val), the specialized function
+ * tagsistant_rds_materialize_add_equal_and_set() is called. Otherwise the
+ * tag is managed here.
+ *
+ * @param statement the GStream object with the under-construction query
+ * @param and_set the qtree_and_node set to add
+ * @param tname the alias used in the query to disambiguate tagging table
+ */
+void tagsistant_rds_materialize_add_and_set(GString *statement, qtree_and_node *and_set)
 {
 	if (!and_set) {
 		dbg('R', LOG_ERR, "tagsistant_query_add_and_set() called with NULL and_set");
@@ -358,8 +246,13 @@ tagsistant_rds_materialize_add_and_set(GString *statement, qtree_and_node *and_s
 	g_free(tname);
 }
 
-void
-tagsistant_rds_materialize_add_negated_and_set(
+/**
+ * Add a negated qtree_and_node set to a building query.
+ *
+ * @param statement the GStream object with the under-construction query
+ * @param and_set the qtree_and_node struct to be add as negated tags
+ */
+void tagsistant_rds_materialize_add_negated_and_set(
 	GString *statement,
 	qtree_and_node *and_set)
 {
@@ -382,8 +275,16 @@ tagsistant_rds_materialize_add_negated_and_set(
 	}
 }
 
-void
-tagsistant_rds_materialize_or_node(qtree_or_node *query, tagsistant_querytree *qtree)
+/**
+ * Create the SQL view that contains all the objects delimited by
+ * the qtree_or_node struct.
+ *
+ * @param query the qtree_or_node to be materialized
+ * @param qtree the tagsistant_querytree object containing the qtree_or_node
+ */
+void tagsistant_rds_materialize_or_node(
+	qtree_or_node *query,
+	tagsistant_querytree *qtree)
 {
 	/*
 	 * skip OR nodes with no tags, including ALL/
@@ -465,15 +366,7 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	/*
 	 * Declare the entries hash table
 	 */
-#if 0
-	rds->entries = g_hash_table_new_full(
-		g_str_hash, g_str_equal,
-		(GDestroyNotify) g_free,
-		(GDestroyNotify) g_list_free
-	);
-#else
 	rds->entries = g_hash_table_new(g_str_hash, g_str_equal);
-#endif
 
 	if (!rds->entries) {
 		dbg('R', LOG_ERR, "Error allocating RDS entries");
@@ -533,7 +426,7 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	/*
 	 * remove entry duplicates
 	 */
-	g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_rds_uniq_entries, rds);
+	// g_hash_table_foreach(rds->entries, (GHFunc) tagsistant_rds_uniq_entries, rds);
 
 	/*
 	 * PHASE 3.
@@ -547,49 +440,6 @@ tagsistant_rds_materialize(tagsistant_rds *rds, tagsistant_querytree *qtree)
 	}
 
 	return (TRUE);
-}
-
-#if 0
-/**
- * Deletes the oldest RDS from the rds table
- *
- * @param qtree the querytree object used for DBI access
- */
-void
-tagsistant_rds_delete_oldest(tagsistant_querytree *qtree)
-{
-	int rds_id;
-	tagsistant_query("select min(id) from rds", qtree->dbi, tagsistant_return_integer, &rds_id);
-	dbg('R', LOG_INFO, "Garbage collector: deleting rds %d", rds_id);
-	tagsistant_query("delete from rds where id = %d", qtree->dbi, NULL, NULL, rds_id);
-}
-#endif
-
-/**
- * RDS garbage collector
- *
- * @param qtree the querytree object used for DBI access
- */
-void
-tagsistant_rds_garbage_collector(tagsistant_querytree *qtree)
-{
-	(void) qtree;
-#if 0
-	int declared_rds = 0;
-	tagsistant_query("select count(distinct id) from rds", qtree->dbi, tagsistant_return_integer, &declared_rds);
-
-	while (declared_rds > TAGSISTANT_GC_RDS) {
-		tagsistant_rds_delete_oldest(qtree);
-		declared_rds--;
-	}
-
-	int stored_tuples = 0;
-	tagsistant_query("select count(*) from rds", qtree->dbi, tagsistant_return_integer, &stored_tuples);
-
-	if (stored_tuples > TAGSISTANT_GC_TUPLES) {
-		tagsistant_rds_delete_oldest(qtree);
-	}
-#endif
 }
 
 /**
@@ -611,32 +461,6 @@ tagsistant_rds_contains_object(gpointer key, gpointer value, gpointer user_data)
 	if (e is NULL || e->name is NULL) return (FALSE);
 	return (strcmp(e->name, match_name) is 0 ? TRUE : FALSE);
 }
-
-#if 0
-/*
- * Lookup the id of the RDS of a query.
- *
- * @param query the query that generates the RDS
- * @param materialized set to one if the RDS exists
- * @return the RDS id
- */
-gchar *tagsistant_get_rds_id(tagsistant_querytree *qtree, int *materialized)
-{
-	/*
-	 * compute the checksum
-	 */
-	gchar *checksum = tagsistant_get_rds_checksum(qtree);
-
-	/*
-	 * check if the RDS has been materialized
-	 */
-	tagsistant_query(
-		"select 1 from rds where id = \"%s\" and reasoned = %d limit 1",
-		qtree->dbi, tagsistant_return_integer, materialized, checksum, qtree->do_reasoning);
-
-	return (checksum);
-}
-#endif
 
 /**
  * Add an RDS to the cache
@@ -757,11 +581,6 @@ tagsistant_rds *
 tagsistant_rds_new(tagsistant_querytree *qtree)
 {
 	/*
-	 * Calls the garbage collector
-	 */
-	tagsistant_rds_garbage_collector(qtree);
-
-	/*
 	 * a NULL query can't be processed
 	 */
 	if (!qtree) {
@@ -875,21 +694,6 @@ tagsistant_rds_new_or_lookup(tagsistant_querytree *qtree)
 
 	return (rds);
 }
-
-#if !TAGSISTANT_RDS_HARD_CLEAN
-void tagsistant_delete_rds_by_source(qtree_and_node *node, dbi_conn dbi)
-{
-	gchar *tag = (node->tag && strlen(node->tag)) ? node->tag : node->namespace;
-
-	tagsistant_query(
-		"select rds_id from rds where tagset like \"%%|%s|%%\"",
-		dbi, tagsistant_rds_uncache, NULL, tag);
-
-	tagsistant_query(
-		"delete from rds where tagset like \"%%|%s|%%\"",
-		dbi, NULL, NULL, tag);
-}
-#endif
 
 /**
  * Destroy an RDS entry hash table
