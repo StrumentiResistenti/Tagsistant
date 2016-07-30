@@ -178,7 +178,10 @@ gchar *tagsistant_rds_path(tagsistant_querytree *qtree)
 {
 	gchar *path = g_strdup(qtree->expanded_full_path);
 	gchar *delimiter = strstr(path, TAGSISTANT_QUERY_DELIMITER);
-	if (delimiter) { *delimiter = '\0'; }
+	if (delimiter) {
+		delimiter += qtree->do_reasoning ? 1 : 2;
+		*delimiter = '\0';
+	}
 	return (path);
 }
 
@@ -356,7 +359,7 @@ tagsistant_rds_materialize_add_and_set(GString *statement, qtree_and_node *and_s
 }
 
 void
-tagsistant_rds_materialize_add_negated_and_set(
+tagsistant_rds_materialize_add_negated_and_set2(
 	GString *statement,
 	qtree_and_node *and_set)
 {
@@ -378,6 +381,31 @@ tagsistant_rds_materialize_add_negated_and_set(
 			next = next->next;
 		}
 		g_string_append_printf(statement, ") and neg.inode is null");
+	}
+}
+
+void
+tagsistant_rds_materialize_add_negated_and_set(
+	GString *statement,
+	qtree_and_node *and_set)
+{
+	if (and_set) {
+		g_string_append_printf(statement,
+			"where objects.inode not in ("
+				"select inode from full_tagging where tag_id in (%d",
+			and_set->tag_id);
+
+		qtree_and_node *next = and_set->next;
+		while (next) {
+			g_string_append_printf(statement, ", %d", next->tag_id);
+			qtree_and_node *related = next->related;
+			while (related) {
+				g_string_append_printf(statement, ", %d", related->tag_id);
+				related = related->related;
+			}
+			next = next->next;
+		}
+		g_string_append_printf(statement, "))");
 	}
 }
 
