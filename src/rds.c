@@ -318,34 +318,26 @@ void tagsistant_rds_materialize_or_node(
      * the objects.
 	 */
 	GString *create_base_table = g_string_sized_new(51200);
-	if (query->is_all_node) {
+	g_string_printf(create_base_table,
+		"create temporary table tv%.16" PRIxPTR " as "
+		"select o.inode, o.objectname from objects o ",
+		(uintptr_t) query);
 
-		g_string_printf(create_base_table,
-			"create temporary table tv%.16" PRIxPTR " as "
-			"select inode, objectname from objects",
-			(uintptr_t) query);
-
-	} else if (query->and_set) {
-
-		g_string_append_printf(create_base_table,
-			"create temporary table tv%.16" PRIxPTR " as "
-			"select o.inode, o.objectname from objects o ",
-			(uintptr_t) query);
-
-		/*
-		 * add each qtree_and_node (and its ->related nodes) to the query
-		 */
+	/*
+	 * add each qtree_and_node (and its ->related nodes) to the query
+	 */
+	unless (query->is_all_node) {
 		qtree_and_node *next_and = query->and_set;
 		while (next_and) {
 			tagsistant_rds_materialize_add_and_set(create_base_table, next_and);
 			next_and = next_and->next;
 		}
-
-		/*
-		 * add each negated qtree_and_node to the query
-		 */
-		tagsistant_rds_materialize_add_negated_and_set(create_base_table, query->negated_and_set);
 	}
+
+	/*
+	 * add each negated qtree_and_node to the query
+	 */
+	tagsistant_rds_materialize_add_negated_and_set(create_base_table, query->negated_and_set);
 
 	/*
 	 * create the table and dispose the statement GString
