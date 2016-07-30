@@ -315,7 +315,7 @@ tagsistant_rds_materialize_add_and_set(GString *statement, qtree_and_node *and_s
 	 * add the first part of the template
 	 */
 	g_string_append_printf(statement,
-		"join full_tagging %s on %s.inode = objects.inode and ",
+		"join full_tagging %s on %s.inode = o.inode and ",
 		tname, tname);
 
 	/*
@@ -359,43 +359,16 @@ tagsistant_rds_materialize_add_and_set(GString *statement, qtree_and_node *and_s
 }
 
 void
-tagsistant_rds_materialize_add_negated_and_set2(
-	GString *statement,
-	qtree_and_node *and_set)
-{
-	if (and_set) {
-		g_string_append_printf(statement,
-			"left outer join full_tagging neg "
-				"on neg.inode = objects.inode "
-				"and neg.tag_id in (%d",
-			and_set->tag_id);
-
-		qtree_and_node *next = and_set->next;
-		while (next) {
-			g_string_append_printf(statement, ", %d", next->tag_id);
-			qtree_and_node *related = next->related;
-			while (related) {
-				g_string_append_printf(statement, ", %d", related->tag_id);
-				related = related->related;
-			}
-			next = next->next;
-		}
-		g_string_append_printf(statement, ") and neg.inode is null");
-	}
-}
-
-void
 tagsistant_rds_materialize_add_negated_and_set(
 	GString *statement,
 	qtree_and_node *and_set)
 {
 	if (and_set) {
 		g_string_append_printf(statement,
-			"where objects.inode not in ("
-				"select inode from full_tagging where tag_id in (%d",
+			"where o.inode not in (select inode from full_tagging where tag_id in (%d",
 			and_set->tag_id);
 
-		qtree_and_node *next = and_set->next;
+		qtree_and_node *next = and_set;
 		while (next) {
 			g_string_append_printf(statement, ", %d", next->tag_id);
 			qtree_and_node *related = next->related;
@@ -432,10 +405,12 @@ tagsistant_rds_materialize_or_node(qtree_or_node *query, tagsistant_querytree *q
      *       full_tagging a2 on a2.inode = o.inode and a2.tag_id in (t2)
      *   join
      *       full_tagging a3 on a3.inode = o.inode and a3.tag_id in (t3)
-     *   left outer join
-     *       tagging neg on neg.inode = o.inode and
-     *       neg.tag_id in (t4, t5, t51) and
-     *       neg.inode is null
+     *   where
+     *       o.inode not in (
+     *           select inode
+     *           from full_tagging
+     *           where tag_id in (t4, t5, t51)
+     *       )
      *   ;
      *
      * The only exception is a query with the ALL/ tag, which will load all
@@ -453,7 +428,7 @@ tagsistant_rds_materialize_or_node(qtree_or_node *query, tagsistant_querytree *q
 
 		g_string_append_printf(create_base_table,
 			"create temporary table tv%.16" PRIxPTR " as "
-			"select objects.inode, objects.objectname from objects ",
+			"select o.inode, o.objectname from objects o ",
 			(uintptr_t) query);
 
 		/*

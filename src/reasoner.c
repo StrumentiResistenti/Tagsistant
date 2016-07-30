@@ -112,7 +112,7 @@ static int tagsistant_add_reasoned_tag(tagsistant_tag *T, tagsistant_reasoning *
 	 * check for duplicates
 	 */
 	qtree_and_node *and = reasoning->start_node;
-	while (and && and->next) {
+	while (and /* && and->next */) {
 		/*
 		 * avoid duplicates
 		 */
