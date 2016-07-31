@@ -94,13 +94,13 @@ extern void tagsistant_db_connection_release(dbi_conn dbi, gboolean is_writer_lo
  * if true, use backend calls to fetch last insert row id,
  * otherwise use libdbi dbi_conn_sequence_last()
  */
-#define TAGSISTANT_USE_INTERNAL_SEQUENCES 1
+#define TAGSISTANT_USE_INTERNAL_SEQUENCES TRUE
 
 /**
  * if true, start transactions using backend calls, otherwise use
  * libdbi dbi_conn_transaction_begin()
  */
-#define TAGSISTANT_USE_INTERNAL_TRANSACTIONS 1
+#define TAGSISTANT_USE_INTERNAL_TRANSACTIONS TRUE
 
 #if TAGSISTANT_USE_INTERNAL_TRANSACTIONS
 #	define tagsistant_commit_transaction(dbi_conn) tagsistant_query("commit", dbi_conn, NULL, NULL)

@@ -154,13 +154,13 @@ void tagsistant_usage(gchar *progname, int verbose)
 #if HAVE_SYS_XATTR_H
 		"    --enable-xattr, -x       enable extended attributes (needed for POSIX ACL)\n"
 #endif
-		"    --debug=bcfFlpqrs2       enable specific debugging output:\n"
-		"                               b: boot                   c: cache           \n"
-		"                               f: file tree (readdir)    F: FUSE operations \n"
-		"                               l: low level              p: plugin          \n"
-		"                               q: query parsing          r: reasoning       \n"
-		"                               R: RDS                    s: SQL queries     \n"
-		"                               2: deduplication                             \n"
+		"    --debug=bcfFlpqrRs2      enable specific debugging output:\n"
+		"                               b: boot                 q: query parsing  \n"
+		"                               c: cache                r: reasoning      \n"
+		"                               f: file tree (readdir)  R: RDS            \n"
+		"                               F: FUSE operations      s: SQL queries    \n"
+		"                               l: low level            2: deduplication  \n"
+		"                               p: autotagging plugins                    \n"
 		"\n%s"
 		, PACKAGE_VERSION, TAGSISTANT_CODENAME, TAGSISTANT_BUILDNUMBER
 		, FUSE_USE_VERSION, license, progname, progname, TAGSISTANT_TRASH_TAG, endnote

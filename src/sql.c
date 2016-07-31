@@ -438,7 +438,7 @@ void tagsistant_create_schema()
 				"create table if not exists objects ("
 					"inode integer not null primary key autoincrement, "
 					"objectname text(255) not null, "
-					"last_autotag timestamp not null, "
+					"last_autotag timestamp not null default current_timestamp, "
 					"checksum text(40) not null default '', "
 					"symlink text(1024) not null default '')",
 				dbi, NULL, NULL);
@@ -509,7 +509,7 @@ void tagsistant_create_schema()
 			 * Helper views
 			 */
 			tagsistant_query(
-				"create or replace view full_tagging as "
+				"create view if not exists full_tagging as "
 					"select tagging.inode, tags.tag_id, tags.tagname, tags.key, tags.value "
 					"from tagging join tags on tags.tag_id = tagging.tag_id",
 				dbi, NULL, NULL);
@@ -968,18 +968,24 @@ int tagsistant_real_query(
 	va_list ap;
 	va_start(ap, firstarg);
 
-	/* check if connection has been created */
+	/*
+	 * check if connection has been created
+	 */
 	if (dbi is NULL) {
 		dbg('s', LOG_ERR, "ERROR! DBI connection was not initialized!");
 		return (0);
 	}
 
 #if TAGSISTANT_USE_QUERY_MUTEX
-	/* lock the connection mutex */
+	/*
+	 * lock the connection mutex
+	 */
 	g_mutex_lock(&tagsistant_query_mutex);
 #endif
 
-	/* check if the connection is alive */
+	/*
+	 * check if the connection is alive
+	 */
 	if (!dbi_conn_ping(dbi)	&& dbi_conn_connect(dbi) < 0) {
 #if TAGSISTANT_USE_QUERY_MUTEX
 		g_mutex_unlock(&tagsistant_query_mutex);
@@ -988,10 +994,14 @@ int tagsistant_real_query(
 		return (0);
 	}
 
-	/* replace all the single or double quotes with "<><>" in the format */
+	/*
+	 * replace all the single or double quotes with "<><>" in the format
+	 */
 	gchar *escaped_format = g_regex_replace_literal(RX1, format, -1, 0, "<><>", 0, NULL);
 
-	/* format the statement */
+	/*
+	 * format the statement
+	 */
 	gchar *statement = g_strdup_vprintf(escaped_format, ap);
 	if (statement is NULL) {
 #if TAGSISTANT_USE_QUERY_MUTEX
@@ -1003,13 +1013,19 @@ int tagsistant_real_query(
 		return (0);
 	}
 
-	/* prepend a backslash to all the single quotes inside the arguments */
+	/*
+	 * prepend a backslash to all the single quotes inside the arguments
+	 */
 	gchar *escaped_statement_tmp = g_regex_replace_literal(RX2, statement, -1, 0, "''", 0, NULL);
 
-	/* replace "<><>" with a single quote */
+	/*
+	 * replace "<><>" with a single quote
+	 */
 	gchar *escaped_statement = g_regex_replace_literal(RX3, escaped_statement_tmp, -1, 0, "'", 0, NULL);
 
-	/* log and do the query */
+	/*
+	 * log and run the query
+	 */
 	dbg('s', LOG_INFO, "SQL from %s:%d: [%s]", file, line, escaped_statement);
 	dbi_result result = dbi_conn_query(dbi, escaped_statement);
 
@@ -1020,7 +1036,9 @@ int tagsistant_real_query(
 	g_free_null(escaped_statement_tmp);
 	g_free_null(escaped_statement);
 
-	/* call the callback function on results or report an error */
+	/*
+	 * call the callback function on results or report an error
+	 */
 	int rows = 0;
 	if (result) {
 
@@ -1034,7 +1052,9 @@ int tagsistant_real_query(
 
 	} else {
 
-		/* get the error message */
+		/*
+		 * get the error message
+		 */
 		const char *errmsg = NULL;
 		dbi_conn_error(dbi, &errmsg);
 		if (errmsg) dbg('s', LOG_ERR, "Error: %s.", errmsg);
@@ -1058,11 +1078,19 @@ tagsistant_inode tagsistant_last_insert_id(dbi_conn conn)
 
 	switch (tagsistant.sql_database_driver) {
 		case TAGSISTANT_DBI_SQLITE_BACKEND:
-			tagsistant_query("SELECT last_insert_rowid()", conn, tagsistant_return_integer, &inode);
+			tagsistant_query(
+				"SELECT cast(last_insert_rowid() as int)",
+				conn,
+				tagsistant_return_integer,
+				&inode);
 			break;
 
 		case TAGSISTANT_DBI_MYSQL_BACKEND:
-			tagsistant_query("SELECT last_insert_id()", conn, tagsistant_return_integer, &inode);
+			tagsistant_query(
+				"SELECT last_insert_id()",
+				conn,
+				tagsistant_return_integer,
+				&inode);
 			break;
 	}
 
@@ -1121,7 +1149,7 @@ int tagsistant_return_integer(void *return_integer, dbi_result result)
 	} else if (type is DBI_TYPE_STRING) {
 		const gchar *int_string = dbi_result_get_string_idx(result, 1);
 		*buffer = atoi(int_string);
-		dbg('s', LOG_INFO, "tagsistant_return_integer called on non integer field");
+		dbg('s', LOG_INFO, "tagsistant_return_integer called on string field %s", int_string);
 	}
 
 	dbg('s', LOG_INFO, "Returning integer: %d", *buffer);

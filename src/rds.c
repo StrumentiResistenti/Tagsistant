@@ -320,7 +320,8 @@ void tagsistant_rds_materialize_or_node(
 	GString *create_base_table = g_string_sized_new(51200);
 	g_string_printf(create_base_table,
 		"create temporary table tv%.16" PRIxPTR " as "
-		"select o.inode, o.objectname from objects o ",
+		"select o.inode as inode, o.objectname as objectname "
+		"from objects o ",
 		(uintptr_t) query);
 
 	/*
