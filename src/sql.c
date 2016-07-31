@@ -224,7 +224,7 @@ void tagsistant_db_init()
  */
 GList *tagsistant_connection_pool = NULL;
 GMutex tagsistant_connection_pool_lock;
-int connections = 0;
+int tagsistant_active_connections = 0;
 
 /**
  * Parse command line options, create connection object,
@@ -256,7 +256,7 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 		if (!dbi_conn_ping(dbi) && dbi_conn_connect(dbi) < 0) {
 			dbi_conn_close(dbi);
 			tagsistant_connection_pool = g_list_delete_link(tagsistant_connection_pool, pool);
-			connections--;
+			tagsistant_active_connections--;
 		} else {
 			tagsistant_connection_pool = g_list_remove_link(tagsistant_connection_pool, pool);
 			g_list_free_1(pool);
@@ -336,7 +336,7 @@ dbi_conn *tagsistant_db_connection(int start_transaction)
 			exit(1);
 		}
 
-		connections++;
+		tagsistant_active_connections++;
 
 		dbg('s', LOG_INFO, "SQL connection established");
 	}

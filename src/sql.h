@@ -48,7 +48,7 @@ extern void tagsistant_wal_sync();
 #define _safe_string(string) string ? string : ""
 
 /* number of active connections */
-extern int connections;
+extern int tagsistant_active_connections;
 
 /**
  * Tagsistant query callback function type definition

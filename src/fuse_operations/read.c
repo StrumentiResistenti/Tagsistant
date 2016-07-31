@@ -124,7 +124,7 @@ int tagsistant_read(const char *path, char *buf, size_t size, off_t offset, stru
 
 		// -- connections --
 		if (g_regex_match_simple("/connections$", path, 0, 0)) {
-			sprintf(stats_buffer, "# of MySQL open connections: %d\n", connections);
+			sprintf(stats_buffer, "# of MySQL open connections: %d\n", tagsistant_active_connections);
 		}
 
 #if TAGSISTANT_ENABLE_QUERYTREE_CACHE
