@@ -97,7 +97,9 @@ gchar *tagsistant_tagging_check_query = NULL;
  */
 void tagsistant_db_init()
 {
-	// initialize DBI library
+	/*
+	 * initialize DBI library
+	 */
 #if TAGSISTANT_REENTRANT_DBI
 	dbi_initialize_r(NULL, &(tagsistant.dbi_instance));
 #else
@@ -112,12 +114,16 @@ void tagsistant_db_init()
 	tagsistant_tag_cache = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 #endif
 
-	// by default, DBI backend provides intersect
+	/*
+	 * by default, DBI backend provides intersect
+	 */
 	tagsistant.sql_backend_have_intersect = 1;
 	tagsistant.sql_database_driver = TAGSISTANT_NULL_BACKEND;
 	dboptions.backend = TAGSISTANT_NULL_BACKEND;
 
-	// if no database option has been passed, use default SQLite3
+	/*
+	 * if no database option has been passed, use default SQLite3
+	 */
 	if (strlen(tagsistant.dboptions) is 0) {
 		tagsistant.dboptions = g_strdup("sqlite3::::");
 		dboptions.backend_name = g_strdup("sqlite3");
@@ -127,10 +133,14 @@ void tagsistant_db_init()
 
 	dbg('b', LOG_INFO, "Database options: %s", tagsistant.dboptions);
 
-	// split database option value up to 5 tokens
+	/*
+	 * split database option value up to 5 tokens
+	 */
 	gchar **_dboptions = g_strsplit(tagsistant.dboptions, ":", 5);
 
-	// set failsafe DB options
+	/*
+	 * set failsafe DB options
+	 */
 	if (_dboptions[0]) {
 		if (strcmp(_dboptions[0], "sqlite3") is 0) {
 
@@ -188,7 +198,9 @@ void tagsistant_db_init()
 #if 0
 	dbg('b', LOG_INFO, "Database driver: %s", dboptions.backend_name);
 
-	// list configured options
+	/*
+	 * list configured options
+	 */
 	const char *option = NULL;
 	int counter = 0;
 	dbg('b', LOG_INFO, "Connection settings: ");
@@ -197,7 +209,9 @@ void tagsistant_db_init()
 		dbg('b', LOG_INFO, "  Option #%d: %s = %s", counter, option, dbi_conn_get_option(tagsistant_dbi_conn, option));
 	}
 
-	// tell if backend have INTERSECT
+	/*
+	 * tell if backend have INTERSECT
+	 */
 	if (tagsistant.sql_backend_have_intersect) {
 		dbg('b', LOG_INFO, "Database supports INTERSECT operator");
 	} else {
@@ -205,12 +219,18 @@ void tagsistant_db_init()
 	}
 #endif
 
-	/* initialize the regular expressions used to escape the SQL queries */
+	/*
+	 * initialize the regular expressions used to
+	 * escape the SQL queries
+	 */
 	RX1 = g_regex_new("[\"']", 0, 0, NULL);
 	RX2 = g_regex_new("'", 0, 0, NULL);
 	RX3 = g_regex_new("<><>", 0, 0, NULL);
 
-	/* initialize the query used to check if an object is still tagged by at least one tag */
+	/*
+	 * initialize the query used to check if an object
+	 * is still tagged by at least one tag
+	 */
 	tagsistant_tagging_check_query = (!tagsistant.trash) ?
 		"select inode from tagging where inode = %d limit 1" :
 		"select inode from tagging "
@@ -436,7 +456,7 @@ void tagsistant_create_schema()
 			 */
 			tagsistant_query(
 				"create table if not exists objects ("
-					"inode integer not null primary key autoincrement, "
+					"inode integer primary key autoincrement not null, "
 					"objectname text(255) not null, "
 					"last_autotag timestamp not null default current_timestamp, "
 					"checksum text(40) not null default '', "
@@ -986,12 +1006,16 @@ int tagsistant_real_query(
 	/*
 	 * check if the connection is alive
 	 */
-	if (!dbi_conn_ping(dbi)	&& dbi_conn_connect(dbi) < 0) {
+	if (!dbi_conn_ping(dbi)) {
+		dbg('s', LOG_INFO, "Reconnecting to the DB");
+		if (dbi_conn_connect(dbi) < 0) {
+
 #if TAGSISTANT_USE_QUERY_MUTEX
-		g_mutex_unlock(&tagsistant_query_mutex);
+			g_mutex_unlock(&tagsistant_query_mutex);
 #endif
-		dbg('s', LOG_ERR, "ERROR! DBI Connection has gone!");
-		return (0);
+			dbg('s', LOG_ERR, "ERROR! DBI Connection has gone!");
+			return (0);
+		}
 	}
 
 	/*
@@ -1079,7 +1103,7 @@ tagsistant_inode tagsistant_last_insert_id(dbi_conn conn)
 	switch (tagsistant.sql_database_driver) {
 		case TAGSISTANT_DBI_SQLITE_BACKEND:
 			tagsistant_query(
-				"SELECT cast(last_insert_rowid() as int)",
+				"select max(inode) from objects", // was "select last_insert_rowid()", changed because of issue #19
 				conn,
 				tagsistant_return_integer,
 				&inode);
@@ -1149,7 +1173,9 @@ int tagsistant_return_integer(void *return_integer, dbi_result result)
 	} else if (type is DBI_TYPE_STRING) {
 		const gchar *int_string = dbi_result_get_string_idx(result, 1);
 		*buffer = atoi(int_string);
-		dbg('s', LOG_INFO, "tagsistant_return_integer called on string field %s", int_string);
+		dbg('s', LOG_ERR, " ---> tagsistant_return_integer called on a string field %s", int_string);
+	} else {
+		dbg('s', LOG_ERR, " ---> tagsistant_return_integer called on an unknown type");
 	}
 
 	dbg('s', LOG_INFO, "Returning integer: %d", *buffer);

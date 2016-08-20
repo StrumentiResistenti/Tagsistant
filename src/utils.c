@@ -106,6 +106,11 @@ void tagsistant_show_config()
 }
 
 /**
+ * dirt fix for SQLite impossibility to fetch last insert row id
+ */
+GMutex tagsistant_sqlite_mutex;
+
+/**
  * Create an object and tag it
  *
  * @param qtree the querytree asking object creation
@@ -137,11 +142,24 @@ tagsistant_inner_create_and_tag_object(
 	}
 
 	if (force_create || (!inode)) {
+		if (tagsistant.sql_database_driver is TAGSISTANT_DBI_SQLITE_BACKEND)
+			g_mutex_lock(&tagsistant_sqlite_mutex);
+
+		/*
+		 * create the object
+		 */
 		tagsistant_query(
 			"insert into objects (objectname) values ('%s')",
 			qtree->dbi, NULL, NULL, qtree->object_path);
 
+		/*
+		 * recover the object inode (SQLite needs a special
+		 * procedure due to a bug involving libDBI)
+		 */
 		inode = tagsistant_last_insert_id(qtree->dbi);
+
+		if (tagsistant.sql_database_driver is TAGSISTANT_DBI_SQLITE_BACKEND)
+			g_mutex_unlock(&tagsistant_sqlite_mutex);
 	}
 
 	if (!inode) {
