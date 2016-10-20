@@ -111,6 +111,7 @@ AC_CHECK_LIB([extractor],[EXTRACTOR_loadDefaultLibraries],[use_libextractor='0.5
 		echo "libextractor is a universal metadata extractor. Tagsistant uses it"
 		echo "to autotag your files."
 		echo "More info at http://http://www.gnu.org/software/libextractor"
+		AC_MSG_FAILURE(["libextractor not found"])
 	])
 ])
 
