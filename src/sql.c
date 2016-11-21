@@ -1334,6 +1334,8 @@ void tagsistant_remove_tag_from_cache(const gchar *tagname, const gchar *key, co
 	g_free(tag_key);
 #else
 	(void) tagname;
+	(void) key;
+	(void) value;
 #endif
 }
 

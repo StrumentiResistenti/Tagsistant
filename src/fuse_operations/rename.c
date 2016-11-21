@@ -110,13 +110,62 @@ int tagsistant_rename(const char *from, const char *to)
 			TAGSISTANT_ABORT_OPERATION(EPERM);
 		}
 
-		tagsistant_query(
-			"update tags set tagname = '%s' "
-				"where tagname = '%s'",
-			from_qtree->dbi,
-			NULL, NULL,
-			to_qtree->last_tag,
-			from_qtree->last_tag);
+		if (from_qtree->value) {
+			if (to_qtree->value) {
+				tagsistant_query(
+					"update tags set tagname = '%s', `key` = '%s', `value` = '%s' "
+						"where tagname = '%s' and `key` = '%s' and `value` = '%s'",
+					from_qtree->dbi,
+					NULL, NULL,
+					to_qtree->namespace, to_qtree->key, to_qtree->value,
+					from_qtree->namespace, from_qtree->key, from_qtree->value);
+			} else {
+				// ... error here!
+				dbg('F', LOG_ERR, "Error: Rename %s/%s/%s -> %s/%s/??",
+					from_qtree->namespace, from_qtree->key, from_qtree->value,
+					to_qtree->namespace, to_qtree->key);
+				TAGSISTANT_ABORT_OPERATION(ENOENT);
+			}
+		} else if (from_qtree->key) {
+			if (to_qtree->key) {
+				tagsistant_query(
+					"update tags set tagname = '%s', `key` = '%s' "
+						"where tagname = '%s' and `key` = '%s' ",
+					from_qtree->dbi,
+					NULL, NULL,
+					to_qtree->namespace, to_qtree->key,
+					from_qtree->namespace, from_qtree->key);
+			} else {
+				// ... error here!
+				dbg('F', LOG_ERR, "Error: Rename %s/%s -> %s/??",
+					from_qtree->namespace, from_qtree->key,
+					to_qtree->namespace);
+				TAGSISTANT_ABORT_OPERATION(ENOENT);
+			}
+		} else if (from_qtree->namespace) {
+			if (to_qtree->namespace) {
+				tagsistant_query(
+					"update tags set tagname = '%s'"
+						"where tagname = '%s' ",
+					from_qtree->dbi,
+					NULL, NULL,
+					to_qtree->namespace,
+					from_qtree->namespace);
+			} else {
+				// ... error here!
+				dbg('F', LOG_ERR, "Error: Rename %s -> ??",
+					from_qtree->namespace);
+				TAGSISTANT_ABORT_OPERATION(ENOENT);
+			}
+		} else {
+			tagsistant_query(
+				"update tags set tagname = '%s' "
+					"where tagname = '%s'",
+				from_qtree->dbi,
+				NULL, NULL,
+				to_qtree->last_tag,
+				from_qtree->last_tag);
+		}
 
 		if (from_qtree->value) {
 			tagsistant_remove_tag_from_cache(from_qtree->namespace, from_qtree->key, from_qtree->value);
