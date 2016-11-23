@@ -149,7 +149,7 @@ void tagsistant_schedule_for_autotagging(tagsistant_querytree *qtree)
 	/*
 	 * check if autotagging was disabled from command line
 	 */
-	if (tagsistant.no_autotagging is FALSE) return;
+	if (tagsistant.no_autotagging is TRUE) return;
 
 	gchar *paths = g_strdup_printf("%s%s%s",
 		qtree->full_path, TAGSISTANT_AUTOTAGGING_SEPARATOR, qtree->full_archive_path);
