@@ -216,11 +216,17 @@ int tagsistant_getattr(const char *path, struct stat *stbuf)
 		stbuf->st_nlink = 1;
 	} else if (QTREE_IS_STORE(qtree)) {
 		if (qtree->error_message) {
-			// OK
+			// OK, nothing to do
 		} else if (qtree->points_to_object) {
 			if (tagsistant_is_tags_list_file(qtree)) {
 				gchar *tags_list = tagsistant_get_file_tags(qtree);
-				stbuf->st_size = strlen(tags_list);
+				if (tags_list is NULL) {
+					TAGSISTANT_ABORT_OPERATION(ENOENT);
+				} else {
+					stbuf->st_size = strlen(tags_list);
+				}
+			} else {
+				// OK, nothing to do
 			}
 		} else if (qtree->last_tag is NULL) {
 			stbuf->st_mode = S_IFDIR|_PERMISSIONS;
