@@ -227,7 +227,7 @@ void tagsistant_db_init()
 	RX2 = g_regex_new("'", 0, 0, NULL);
 	RX3 = g_regex_new("<><>", 0, 0, NULL);
 
-	RX_triple_tags = g_regex_new("^([^:]+):([^=]+)=(.+)$", 0, 0, NULL);
+	RX_triple_tags = g_regex_new("^([^:]+:)([^=]+)=(.+)$", 0, 0, NULL);
 
 	/*
 	 * initialize the query used to check if an object
@@ -1415,9 +1415,8 @@ void tagsistant_sql_smart_tag_object(dbi_conn conn, const gchar *tag, tagsistant
 {
 	if (!tag || strlen(tag) is 0 || inode <= 0) return;
 
-	GRegex *rx = g_regex_new("^([^:]+:)([^=]+)=(.+)$", 0, 0, NULL);
 	GMatchInfo *mi;
-	g_regex_match(/* RX_triple_tags */ rx, tag, 0, &mi);
+	g_regex_match(RX_triple_tags, tag, 0, &mi);
 
 	if (g_match_info_matches(mi)) {
 		gchar *ns = g_match_info_fetch(mi, 1);
@@ -1434,7 +1433,6 @@ void tagsistant_sql_smart_tag_object(dbi_conn conn, const gchar *tag, tagsistant
 	}
 
 	g_match_info_free(mi);
-	g_regex_unref(rx);
 }
 
 /**
