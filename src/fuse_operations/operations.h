@@ -17,6 +17,9 @@
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
+#define OPS_IN "--> "
+#define OPS_OUT "<-- "
+
 #define TAGSISTANT_ABORT_OPERATION(set_errno) \
 	{ res = -1; tagsistant_errno = set_errno; goto TAGSISTANT_EXIT_OPERATION; }
 

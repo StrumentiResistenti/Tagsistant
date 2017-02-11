@@ -30,7 +30,7 @@ int tagsistant_removexattr(const char *path, const char *name)
 {
     int res = 0, tagsistant_errno = 0;
 
-	TAGSISTANT_START("SETXATTR on %s", path);
+	TAGSISTANT_START(OPS_IN "SETXATTR on %s", path);
 
 	// build querytree
 	tagsistant_querytree *qtree = tagsistant_querytree_new(path, 0, 0, 1, 0);
@@ -79,11 +79,11 @@ int tagsistant_removexattr(const char *path, const char *name)
 TAGSISTANT_EXIT_OPERATION:
 
 	if ( res is -1 ) {
-		TAGSISTANT_STOP_ERROR("REMOVEXATTR on %s {%s}: %d %d: %s", path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
+		TAGSISTANT_STOP_ERROR(OPS_OUT "REMOVEXATTR on %s {%s}: %d %d: %s", path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("REMOVEXATTR on %s {%s}: OK", path, tagsistant_querytree_type(qtree));
+		TAGSISTANT_STOP_OK(OPS_OUT "REMOVEXATTR on %s {%s}: OK", path, tagsistant_querytree_type(qtree));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return (0);
 	}

@@ -33,7 +33,7 @@ int tagsistant_write(const char *path, const char *buf, size_t size, off_t offse
 {
     int res = 0, tagsistant_errno = 0, fh = 0;
 
-	TAGSISTANT_START("WRITE on %s [size: %lu offset: %lu]", path, (unsigned long) size, (long unsigned int) offset);
+	TAGSISTANT_START(OPS_IN "WRITE on %s [size: %lu offset: %lu]", path, (unsigned long) size, (long unsigned int) offset);
 
 	tagsistant_querytree *qtree = tagsistant_querytree_new(path, 0, 0, 1, 1);
 
@@ -78,6 +78,51 @@ int tagsistant_write(const char *path, const char *buf, size_t size, off_t offse
 
 	// -- object on disk --
 	if (QTREE_POINTS_TO_OBJECT(qtree)) {
+		if (tagsistant_is_tags_list_file(qtree)) {
+			tagsistant_delete_rds_involved(qtree);
+
+			/*
+			 * build a tagsistant_querytree without the .tags suffix
+			 * just to guess object inode
+			 */
+			gchar *object_path = tagsistant_string_tags_list_suffix(qtree);
+			tagsistant_querytree *object_qtree = tagsistant_querytree_new(object_path, 0, 0, 0, 1);
+			tagsistant_inode inode = object_qtree->inode;
+			tagsistant_delete_rds_involved(object_qtree);
+			tagsistant_querytree_destroy(object_qtree, 0);
+			g_free(object_path);
+
+			/*
+			 * delete current tagging
+			 */
+			tagsistant_query(
+				"delete from tagging where inode = %d",
+				qtree->dbi, NULL, NULL, inode);
+
+			/*
+			 * split the buffer into tokens
+			 */
+			gchar *buf_term = g_strndup(buf, size);
+			gchar **tags = g_strsplit(buf_term, "\n", -1);
+			gchar **token = tags;
+			g_free(buf_term);
+
+			/*
+			 * iterate on tokens
+			 */
+			while (*token) {
+				tagsistant_sql_smart_tag_object(qtree->dbi, *token, inode);
+				token++;
+			}
+
+			/*
+			 * free the tokens and return
+			 */
+			g_strfreev(tags);
+			res = size;
+			goto TAGSISTANT_EXIT_OPERATION;
+		}
+
 		if (!qtree->full_archive_path) {
 			dbg('F', LOG_ERR, "Null qtree->full_archive_path");
 			TAGSISTANT_ABORT_OPERATION(EFAULT);
@@ -120,11 +165,11 @@ int tagsistant_write(const char *path, const char *buf, size_t size, off_t offse
 
 TAGSISTANT_EXIT_OPERATION:
 	if ( res is -1 ) {
-		TAGSISTANT_STOP_ERROR("WRITE %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
+		TAGSISTANT_STOP_ERROR(OPS_OUT "WRITE %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("WRITE %s (%s): OK", path, tagsistant_querytree_type(qtree));
+		TAGSISTANT_STOP_OK(OPS_OUT "WRITE %s (%s): OK", path, tagsistant_querytree_type(qtree));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return (res);
 	}

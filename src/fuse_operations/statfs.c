@@ -33,16 +33,16 @@ int tagsistant_statfs(const char *path, struct statfs *stbuf)
     int res = 0, tagsistant_errno = 0;
 	(void) path;
 
-	TAGSISTANT_START("STATVFS on %s", path);
+	TAGSISTANT_START(OPS_IN "STATVFS on %s", path);
 
 	res = statfs(tagsistant.repository, stbuf);
 	tagsistant_errno = errno;
 
 	if ( res is -1 ) {
-		TAGSISTANT_STOP_ERROR("STATFS on %s: %d %d: %s", path, res, tagsistant_errno, strerror(tagsistant_errno));
+		TAGSISTANT_STOP_ERROR(OPS_OUT "STATFS on %s: %d %d: %s", path, res, tagsistant_errno, strerror(tagsistant_errno));
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("STATFS on %s: OK", path);
+		TAGSISTANT_STOP_OK(OPS_OUT "STATFS on %s: OK", path);
 		return (0);
 	}
 }

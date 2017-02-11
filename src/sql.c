@@ -87,7 +87,7 @@ GHashTable *tagsistant_tag_cache = NULL;
 #endif
 
 /** regular expressions used to escape query parameters */
-GRegex *RX1, *RX2, *RX3;
+GRegex *RX1, *RX2, *RX3, *RX_triple_tags;
 
 /** the query used by tagsistant_is_tagged to check if an object is still tagged */
 gchar *tagsistant_tagging_check_query = NULL;
@@ -226,6 +226,8 @@ void tagsistant_db_init()
 	RX1 = g_regex_new("[\"']", 0, 0, NULL);
 	RX2 = g_regex_new("'", 0, 0, NULL);
 	RX3 = g_regex_new("<><>", 0, 0, NULL);
+
+	RX_triple_tags = g_regex_new("^([^:]+):([^=]+)=(.+)$", 0, 0, NULL);
 
 	/*
 	 * initialize the query used to check if an object
@@ -1400,6 +1402,39 @@ void tagsistant_sql_tag_object(
 	}
 
 	tagsistant_query("insert into tagging(tag_id, inode) values('%d', '%d')", conn, NULL, NULL, tag_id, inode);
+}
+
+/**
+ * Tag an object with a simple or triple tag
+ *
+ * @param conn dbi_conn reference
+ * @param tag the simple or triple tag to apply
+ * @param inode the object inode
+ */
+void tagsistant_sql_smart_tag_object(dbi_conn conn, const gchar *tag, tagsistant_inode inode)
+{
+	if (!tag || strlen(tag) is 0 || inode <= 0) return;
+
+	GRegex *rx = g_regex_new("^([^:]+:)([^=]+)=(.+)$", 0, 0, NULL);
+	GMatchInfo *mi;
+	g_regex_match(/* RX_triple_tags */ rx, tag, 0, &mi);
+
+	if (g_match_info_matches(mi)) {
+		gchar *ns = g_match_info_fetch(mi, 1);
+		gchar *k  = g_match_info_fetch(mi, 2);
+		gchar *v  = g_match_info_fetch(mi, 3);
+
+		tagsistant_sql_tag_object(conn, ns, k, v, inode);
+
+		g_free(ns);
+		g_free(k);
+		g_free(v);
+	} else {
+		tagsistant_sql_tag_object(conn, tag, NULL, NULL, inode);
+	}
+
+	g_match_info_free(mi);
+	g_regex_unref(rx);
 }
 
 /**

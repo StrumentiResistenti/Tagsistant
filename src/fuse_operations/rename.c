@@ -30,7 +30,7 @@ int tagsistant_rename(const char *from, const char *to)
 {
     int res = 0, tagsistant_errno = 0;
 
-	TAGSISTANT_START("RENAME %s as %s", from, to);
+	TAGSISTANT_START(OPS_IN "RENAME %s as %s", from, to);
 
 	tagsistant_querytree *from_qtree = NULL, *to_qtree = NULL;
 
@@ -210,12 +210,12 @@ TAGSISTANT_EXIT_OPERATION:
 	if (to_qtree) to_qtree->dbi = tmp_dbi;
 
 	if ( res is -1 ) {
-		TAGSISTANT_STOP_ERROR("RENAME %s (%s) to %s (%s): %d %d: %s", from, tagsistant_querytree_type(from_qtree), to, tagsistant_querytree_type(to_qtree), res, tagsistant_errno, strerror(tagsistant_errno));
+		TAGSISTANT_STOP_ERROR(OPS_OUT "RENAME %s (%s) to %s (%s): %d %d: %s", from, tagsistant_querytree_type(from_qtree), to, tagsistant_querytree_type(to_qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(from_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		tagsistant_querytree_destroy(to_qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("RENAME %s (%s) to %s (%s): OK", from, tagsistant_querytree_type(from_qtree), to, tagsistant_querytree_type(to_qtree));
+		TAGSISTANT_STOP_OK(OPS_OUT "RENAME %s (%s) to %s (%s): OK", from, tagsistant_querytree_type(from_qtree), to, tagsistant_querytree_type(to_qtree));
 		tagsistant_querytree_destroy(from_qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		tagsistant_querytree_destroy(to_qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return (0);

@@ -36,7 +36,7 @@ int tagsistant_read(const char *path, char *buf, size_t size, off_t offset, stru
     int res = 0, tagsistant_errno = 0, fh = 0;
     gchar stats_buffer[TAGSISTANT_STATS_BUFFER];
 
-	TAGSISTANT_START("READ on %s [size: %lu offset: %lu]", path, (long unsigned int) size, (long unsigned int) offset);
+	TAGSISTANT_START(OPS_IN "READ on %s [size: %lu offset: %lu]", path, (long unsigned int) size, (long unsigned int) offset);
 
 	tagsistant_querytree *qtree = tagsistant_querytree_new(path, 0, 0, 1, 1);
 
@@ -178,11 +178,11 @@ int tagsistant_read(const char *path, char *buf, size_t size, off_t offset, stru
 
 TAGSISTANT_EXIT_OPERATION:
 	if ( res is -1 ) {
-		TAGSISTANT_STOP_ERROR("READ %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
+		TAGSISTANT_STOP_ERROR(OPS_OUT "READ %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("READ %s (%s): OK", path, tagsistant_querytree_type(qtree));
+		TAGSISTANT_STOP_OK(OPS_OUT "READ %s (%s): OK", path, tagsistant_querytree_type(qtree));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return (res);
 	}

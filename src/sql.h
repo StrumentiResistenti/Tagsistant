@@ -118,6 +118,7 @@ extern void				tagsistant_sql_create_tag(dbi_conn conn, const gchar *tagname, co
 extern tagsistant_inode	tagsistant_sql_get_tag_id(dbi_conn conn, const gchar *tagname, const gchar *key, const gchar *value);
 extern void				tagsistant_sql_delete_tag(dbi_conn conn, const gchar *tagname, const gchar *key, const gchar *value);
 extern void				tagsistant_sql_tag_object(dbi_conn conn, const gchar *tagname, const gchar *key, const gchar *value, tagsistant_inode inode);
+extern void				tagsistant_sql_smart_tag_object(dbi_conn conn, const gchar *tag, tagsistant_inode inode);
 extern void				tagsistant_sql_untag_object(dbi_conn conn, const gchar *tagname, const gchar *key, const gchar *value, tagsistant_inode inode);
 extern void				tagsistant_sql_rename_tag(dbi_conn conn, const gchar *tagname, const gchar *oldtagname);
 extern tagsistant_inode	tagsistant_last_insert_id(dbi_conn conn);

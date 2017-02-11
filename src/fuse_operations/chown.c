@@ -31,7 +31,7 @@ int tagsistant_chown(const char *path, uid_t uid, gid_t gid)
 {
     int res = 0, tagsistant_errno = 0;
 
-	TAGSISTANT_START("CHOWN on %s [uid: %d gid: %d]", path, uid, gid);
+	TAGSISTANT_START(OPS_IN "CHOWN on %s [uid: %d gid: %d]", path, uid, gid);
 
 	tagsistant_querytree *qtree = tagsistant_querytree_new(path, 0, 0, 1, 1);
 
@@ -54,11 +54,11 @@ int tagsistant_chown(const char *path, uid_t uid, gid_t gid)
 
 TAGSISTANT_EXIT_OPERATION:
 	if ( res is -1 ) {
-		TAGSISTANT_STOP_ERROR("CHMOD %s to %d,%d (%s): %d %d: %s", qtree->full_archive_path, uid, gid, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
+		TAGSISTANT_STOP_ERROR(OPS_OUT "CHMOD %s to %d,%d (%s): %d %d: %s", qtree->full_archive_path, uid, gid, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("CHMOD %s, %d, %d (%s): OK", path, uid, gid, tagsistant_querytree_type(qtree));
+		TAGSISTANT_STOP_OK(OPS_OUT "CHMOD %s, %d, %d (%s): OK", path, uid, gid, tagsistant_querytree_type(qtree));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return (0);
 	}

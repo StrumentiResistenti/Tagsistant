@@ -30,7 +30,7 @@ int tagsistant_open(const char *path, struct fuse_file_info *fi)
 {
     int res = -1, tagsistant_errno = ENOENT;
 
-	TAGSISTANT_START("OPEN on %s", path);
+	TAGSISTANT_START(OPS_IN "OPEN on %s", path);
 
 	// build querytree
 	tagsistant_querytree *qtree = tagsistant_querytree_new(path, 0, 0, 1, 0);
@@ -49,7 +49,7 @@ int tagsistant_open(const char *path, struct fuse_file_info *fi)
 	// -- object --
 	else if (QTREE_POINTS_TO_OBJECT(qtree)) {
 		if (tagsistant_is_tags_list_file(qtree)) {
-			res = open(tagsistant.tags, fi->flags|O_RDONLY);
+			res = open(tagsistant.tags, fi->flags);
 			tagsistant_errno = errno;
 			goto TAGSISTANT_EXIT_OPERATION;
 		}
@@ -112,11 +112,11 @@ int tagsistant_open(const char *path, struct fuse_file_info *fi)
 
 TAGSISTANT_EXIT_OPERATION:
 	if ( res is -1 ) {
-		TAGSISTANT_STOP_ERROR("OPEN on %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
+		TAGSISTANT_STOP_ERROR(OPS_OUT "OPEN on %s (%s) (%s): %d %d: %s", path, qtree->full_archive_path, tagsistant_querytree_type(qtree), res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("OPEN on %s (%s): OK", path, tagsistant_querytree_type(qtree));
+		TAGSISTANT_STOP_OK(OPS_OUT "OPEN on %s (%s): OK", path, tagsistant_querytree_type(qtree));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return (0);
 	}

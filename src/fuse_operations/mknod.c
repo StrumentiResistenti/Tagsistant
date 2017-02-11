@@ -31,7 +31,7 @@ int tagsistant_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	int res = 0, tagsistant_errno = 0;
 
-	TAGSISTANT_START("MKNOD on %s [mode: %u rdev: %u]", path, mode, (unsigned int) rdev);
+	TAGSISTANT_START(OPS_IN "MKNOD on %s [mode: %u rdev: %u]", path, mode, (unsigned int) rdev);
 
 	// build querytree
 	tagsistant_querytree *qtree = tagsistant_querytree_new(path, 0, 1, 1, 0);
@@ -47,6 +47,8 @@ int tagsistant_mknod(const char *path, mode_t mode, dev_t rdev)
 	// -- tags --
 	if (QTREE_POINTS_TO_OBJECT(qtree)) {
 		if (is_all_path(qtree->full_path)) TAGSISTANT_ABORT_OPERATION(EFAULT);
+
+		if (tagsistant_is_tags_list_file(qtree)) goto TAGSISTANT_EXIT_OPERATION;
 
 		tagsistant_querytree_check_tagging_consistency(qtree);
 
@@ -76,13 +78,13 @@ int tagsistant_mknod(const char *path, mode_t mode, dev_t rdev)
 
 TAGSISTANT_EXIT_OPERATION:
 	if ( res is -1 ) {
-		TAGSISTANT_STOP_ERROR("MKNOD on %s (%s) (%s): %d %d: %s",
+		TAGSISTANT_STOP_ERROR(OPS_OUT "MKNOD on %s (%s) (%s): %d %d: %s",
 			path, qtree->full_archive_path, tagsistant_querytree_type(qtree),
 			res, tagsistant_errno, strerror(tagsistant_errno));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_ROLLBACK_TRANSACTION);
 		return (-tagsistant_errno);
 	} else {
-		TAGSISTANT_STOP_OK("MKNOD on %s (%s): OK", path, tagsistant_querytree_type(qtree));
+		TAGSISTANT_STOP_OK(OPS_OUT "MKNOD on %s (%s): OK", path, tagsistant_querytree_type(qtree));
 		tagsistant_querytree_destroy(qtree, TAGSISTANT_COMMIT_TRANSACTION);
 		return (0);
 	}

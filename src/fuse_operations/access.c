@@ -28,17 +28,17 @@
  */
 int tagsistant_access(const char *path, int mode)
 {
-	TAGSISTANT_START("ACCESS on %s [mode: %u]", path, mode);
+	TAGSISTANT_START(OPS_IN "ACCESS on %s [mode: %u]", path, mode);
 	(void) mode;
 
 	struct stat st;
 	int res = tagsistant_getattr(path, &st);
 
 	if (res is 0) {
-		TAGSISTANT_STOP_OK("ACCESS on %s: OK", path);
+		TAGSISTANT_STOP_OK(OPS_OUT "ACCESS on %s: OK", path);
 		return(0);
 	}
 
-	TAGSISTANT_STOP_ERROR("ACCESS on %s: -1 %d: %s", path, EACCES, strerror(EACCES));
+	TAGSISTANT_STOP_ERROR(OPS_OUT "ACCESS on %s: -1 %d: %s", path, EACCES, strerror(EACCES));
 	return(-EACCES);
 }
